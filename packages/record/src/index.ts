@@ -1,4 +1,4 @@
-// `@byokit/capture` — record a screen or a desktop through any recorder implementing recorder protocol v1
+// `@byokit/record` — record a screen or a desktop through any recorder implementing recorder protocol v1
 // (docs/capability-kits.md 5, 6). The fake recorder and contract suite live in `./testing`.
 
 export { CONSENT_WINDOW_S, DISPLAY_VARS, PROTOCOL, PROTOCOL_FLOOR } from './constants.ts';

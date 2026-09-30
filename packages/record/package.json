@@ -1,14 +1,13 @@
 {
-  "name": "@byokit/capture",
+  "name": "@byokit/record",
   "version": "0.1.0",
-  "private": true,
   "description": "Record a screen or a desktop into a take and make a video from it, through any recorder that implements the open recorder protocol v1 this kit defines.",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/umeranjum17/byokit.git",
-    "directory": "packages/capture"
+    "directory": "packages/record"
   },
   "engines": {
     "node": ">=22.18"

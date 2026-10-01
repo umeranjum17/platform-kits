@@ -152,8 +152,9 @@ export async function showUmerWhere() {
   if (state !== 'on') return;
   const frame = await screenFrame.frame();
   if (frame.status !== 'captured') return;
+  // The target's centre and size, in the picture's pixels (here: a 600 x 150 button in the middle).
   const result = await overlay.pointHere({
-    x: frame.width / 2, y: frame.height / 2,
+    x: frame.width / 2, y: frame.height / 2, width: 600, height: 150,
     label: 'Umer, tap here', space: frame.space, ms: 2500,
   });
   if (result === 'display-changed') { /* ask for a fresh picture after rotating or resizing */ }
@@ -175,15 +176,18 @@ Android 14+ requests the entire default display; an OEM override to app-only cap
 instead of returning a picture with misleading coordinates. Protected content can be blank, as enforced by Android.
 If coordinates came from a resized preview, convert them back to the original image pixels first.
 
-`pointHere({ x, y, label, space?, ms? })` centres a ring at those full-display pixels, draws the label beside it and
-announces the full label for TalkBack. It needs an already started overlay (either host). It replaces the previous
-marker, defaults to 2500 ms (allowed range 1–60000), and returns `shown`, `not-running`, `needs-permission`,
-`display-changed`, or `unsupported`. Pass `frame.space` to reject stale geometry; without it the current display is
-used. Coordinates must be finite and inside the display, with a non-empty label. A marker never takes focus or
-accepts touches; its window opacity stays below Android's pass-through threshold. The bubble keeps its own existing
-touch behavior. `dismissPoint()`, `stop()`, native teardown and host loss remove the marker. Auto-dismiss uses elapsed
-time, with no animation. A ring near an edge may be clipped and a long visual label is shortened; TalkBack receives
-it in full.
+`pointHere({ x, y, width?, height?, label, space?, ms? })` points at the target centred on those full-display pixels.
+With the target's `width` and `height` the ring goes around the whole target, outside its edges, so it never covers the
+target's own label; without them the ring is a 48 dp circle around the point. The label sits in a callout below the
+target, or above it when there is no room below, centred on the target and kept clear of the status bar, navigation
+bar, cutout and screen edges; its arrow points at the target. A label too long for the screen is shortened on screen,
+and TalkBack receives it in full. A ring at a screen edge stays fully visible. It needs an already started overlay
+(either host). It replaces the previous marker, defaults to 2500 ms (allowed range 1–60000), and returns `shown`,
+`not-running`, `needs-permission`, `display-changed`, or `unsupported`. Pass `frame.space` to reject stale geometry;
+without it the current display is used. Coordinates must be finite and inside the display, sizes finite and
+non-negative, with a non-empty label. A marker never takes focus or accepts touches; its window opacity stays within
+Android's pass-through limit (0.8). The bubble keeps its own existing touch behavior. `dismissPoint()`, `stop()`,
+native teardown and host loss remove the marker. Auto-dismiss uses elapsed time, with no animation.
 
 For an account-free emulator demo and repeatable consent/marker proof, build the Expo example with
 `EXPO_PUBLIC_SCREEN_DEMO=1` and run `examples/expo/e2e-screen-frame.sh <emulator-serial>`. Its two PNG captures are

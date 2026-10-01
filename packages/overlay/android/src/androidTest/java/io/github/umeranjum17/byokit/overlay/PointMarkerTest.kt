@@ -43,7 +43,7 @@ class PointMarkerTest {
         val params = view.layoutParams as WindowManager.LayoutParams
         assertTrue(params.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE != 0)
         assertTrue(params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE != 0)
-        assertTrue(params.alpha <= 0.6f)
+        assertTrue(params.alpha <= 0.8f)
         node.recycle()
       }
       event.recycle()

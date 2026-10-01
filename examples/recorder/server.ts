@@ -92,7 +92,7 @@ export function recorderServer(o: RecorderOptions): { server: Server; token: str
     for await (const chunk of req) { body += chunk; if (body.length > 1024) break; }
     return body;
   };
-  const server = createServer(async (req, res) => {
+  const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     // The token keeps other local pages out; the host check stops DNS rebinding.
     const { port } = server.address() as { port: number };
     const [, t, route = ''] = (req.url ?? '/').split('?')[0]!.split('/');
@@ -120,7 +120,8 @@ export function recorderServer(o: RecorderOptions): { server: Server; token: str
       return send(res, 202);
     }
     if (req.method === 'POST' && route === 'stop') {
-      await o.capture.stop();
+      // A slow answer is fine: the kit still ends the recording, and the state stream reports it.
+      void o.capture.stop().catch(() => {});
       return send(res, 202);
     }
     if (req.method === 'GET' && route === 'video' && saved) {
@@ -129,6 +130,9 @@ export function recorderServer(o: RecorderOptions): { server: Server; token: str
       return;
     }
     send(res, 404, 'Not found');
+  };
+  const server = createServer((req, res) => {
+    handle(req, res).catch(() => { if (res.headersSent) res.destroy(); else send(res, 500, words('capture.failed')); });
   });
   return { server, token };
 }

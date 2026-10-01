@@ -14,8 +14,9 @@ const out = a.at(-1); fs.writeFileSync(out, 'video');
 if(a.includes('x11grab')) {
  fs.writeFileSync(${JSON.stringify(join(dir, 'record-args'))}, JSON.stringify(a));
  if(${JSON.stringify(mode)} === 'fail') process.exit(1);
- if(${JSON.stringify(mode)} !== 'pending') console.log('frame=1');
- const t = setTimeout(() => process.exit(0), 800);
+ if(${JSON.stringify(mode)} === 'normal') console.log('frame=1');
+ if(${JSON.stringify(mode)} === 'slow') setTimeout(() => console.log('frame=1'), 2500);
+ const t = setTimeout(() => process.exit(0), ${JSON.stringify(mode)} === 'slow' ? 2800 : 800);
  process.stdin.on('data', () => { clearTimeout(t); process.exit(0); });
 } else { fs.writeFileSync(${JSON.stringify(join(dir, 'render-args'))}, JSON.stringify(a)); }
 `, { mode: 0o700 });
@@ -61,7 +62,7 @@ test('records, stops by state, rejects overlap, cleans state, and passes render 
   assert.deepEqual(readdirSync(b.state), []);
   // 30 fps constant rate into a lossless master, so the one lossy pass is make().
   const grab = (JSON.parse(readFileSync(join(b.dir, 'record-args'), 'utf8')) as string[]).join(' ');
-  assert.match(grab, /-framerate 30 .*-fps_mode cfr -r 30 .*-qp 0 /);
+  assert.match(grab, /-framerate 30 .*-fps_mode cfr -r 30 -c:v libx264rgb -preset ultrafast -qp 0 /);
   const take = lines[1]!.take as string;
   const before = readdirSync(take);
   const plan = await call(['capture', 'make', take, '--no-planner', '--plan-only'], b.tools);
@@ -86,6 +87,12 @@ test('failed and stopped-before-frames recordings leave no take or active state'
   await call(['capture', 'stop', '--state-dir', b.state], b.tools);
   assert.equal((await running).lines[0]?.error.code, 'capture-stopped');
   assert.deepEqual(readdirSync(b.root), []); assert.deepEqual(readdirSync(b.state), []);
+});
+
+test('a slow first frame on a busy machine still records instead of stopping at max-seconds', async () => {
+  const b = bench('slow');
+  const recorded = await call(b.argv, b.tools);
+  assert.deepEqual(recorded.lines.map(e => e.event), ['recording', 'done']);
 });
 
 test('missing takes and corrupt captions return protocol errors; failure preserves existing render', async () => {

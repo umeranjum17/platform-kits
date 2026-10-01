@@ -137,8 +137,9 @@ const views = ['pick', 'rec', 'saved', 'failed'];
 let screens = [], chosen = null, saved = null, ticker = 0;
 
 // The page lives in a small app window: it sizes itself for each step and the recording card sits in a corner.
+const SIZES = { pick: [800, 520], card: [380, 100], saved: [800, 680], failed: [560, 260] };
 function frame(kind) {
-  const s = window.screen, w = kind === 'card' ? 380 : 800, h = kind === 'card' ? 100 : 680;
+  const s = window.screen, [w, h] = SIZES[kind];
   const left = kind === 'card' ? s.availLeft + s.availWidth - w - 24 : s.availLeft + (s.availWidth - w) / 2;
   const top = kind === 'card' ? s.availTop + s.availHeight - h - 24 : s.availTop + (s.availHeight - h) / 2;
   try { window.resizeTo(w, h); window.moveTo(Math.round(left), Math.round(top)); } catch {}
@@ -179,9 +180,9 @@ $('start').onclick = async () => {
   if (!res.ok) fail(await res.text());
 };
 $('stop').onclick = () => { $('stop').disabled = true; fetch('stop', { method: 'POST' }); };
-$('again').onclick = $('retry').onclick = () => { chosen = null; $('start').disabled = true; frame('panel'); show('pick'); loadScreens(); };
+$('again').onclick = $('retry').onclick = () => { chosen = null; $('start').disabled = true; frame('pick'); show('pick'); loadScreens(); };
 
-function fail(message) { clearInterval(ticker); $('failedWhy').textContent = message; frame('panel'); show('failed'); }
+function fail(message) { clearInterval(ticker); $('failedWhy').textContent = message; frame('failed'); show('failed'); }
 
 function apply(s) {
   if (s.state === 'recording') {
@@ -199,7 +200,7 @@ function apply(s) {
     $('fileMeta').textContent = `${clock(s.seconds)} · ${s.width} × ${s.height} · 30 fps · ${size(s.bytes)}`;
     $('video').src = `video?${Date.now()}`;
     $('saveCopy').href = 'video'; $('saveCopy').download = s.name;
-    frame('panel'); show('saved');
+    frame('saved'); show('saved');
   } else if (s.state === 'error') fail(s.message);
 }
 
@@ -223,7 +224,7 @@ $('video').addEventListener('dragstart', (e) => {
 });
 
 new EventSource('events').onmessage = (m) => apply(JSON.parse(m.data));
-frame('panel'); show('pick'); loadScreens();
+frame('pick'); show('pick'); loadScreens();
 </script>
 </body>
 </html>

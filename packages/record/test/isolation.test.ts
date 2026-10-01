@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { scratchDir } from '../../test-support.ts';
-import { CANARY, decoy } from '../../accounts/src/testing/index.ts';
+import { CANARY, decoy } from '../../../test-support/isolation.ts';
 import { Capture } from '../src/capture.ts';
 import { captureContract, fakeRecorder, type FakeRecorder } from '../src/testing/index.ts';
 

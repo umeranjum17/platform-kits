@@ -1,4 +1,4 @@
-// `@byokit/speak` default entry: native-free, so it loads on every platform. On the web it speaks through the
+// `@platform-kits/speak` default entry: native-free, so it loads on every platform. On the web it speaks through the
 // platform's own speechSynthesis; on Node (and anywhere without it) `speaker` is `unsupported` unless the host
 // injects an engine with `createSpeaker`. React Native resolves `rn.ts` instead.
 import { browserEngine } from './browser.ts';

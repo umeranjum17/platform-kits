@@ -1,4 +1,4 @@
-# @byokit/statusbar
+# @platform-kits/statusbar
 
 One ongoing job the person started, shown as a status-bar chip on Android 16 (a Live Update: a promoted ongoing
 notification), as an Expo module. It has a counts-only copy for the lock screen and screen sharing, up to three actions
@@ -6,7 +6,7 @@ that need the phone unlocked, and a dismissal that sticks until the job ends. On
 16 (API 36) it reports `unsupported` ([docs/capability-kits.md](../../docs/capability-kits.md) §12).
 
 ```ts
-import { status, stateWords } from '@byokit/statusbar';
+import { status, stateWords } from '@platform-kits/statusbar';
 
 status.show({
   title: 'Scribe is working', text: '2 need you',   // private: only on an unlocked phone
@@ -20,7 +20,7 @@ if ((await status.state()) === 'off') await status.openSettings();
 status.clear();   // the job ended
 ```
 
-Add the config plugin to `app.json`: `"@byokit/statusbar"`. It adds `POST_PROMOTED_NOTIFICATIONS`, which has no prompt.
+Add the config plugin to `app.json`: `"@platform-kits/statusbar"`. It adds `POST_PROMOTED_NOTIFICATIONS`, which has no prompt.
 The library's manifest brings `POST_NOTIFICATIONS`; the app asks for that one itself (for example with
 `PermissionsAndroid`) and shows `stateWords('needs-permission')` until it is granted.
 

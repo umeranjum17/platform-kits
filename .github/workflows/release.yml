@@ -1,6 +1,6 @@
 name: Release
 
-# Publishes every @byokit package whose version is not on npm yet, with provenance, through npm trusted publishing
+# Publishes every @platform-kits package whose version is not on npm yet, with provenance, through npm trusted publishing
 # (OIDC): no token is stored anywhere. Each package's trusted publisher must name this repository and this workflow
 # file (npm trust github). Gates and order: scripts/release.ts publish.
 on:

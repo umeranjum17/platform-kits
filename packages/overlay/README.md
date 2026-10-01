@@ -1,4 +1,4 @@
-# @byokit/overlay
+# @platform-kits/overlay
 
 A floating bubble over other apps on Android, as an Expo module: a panel (a React component the app registers) that
 opens on tap, per-app visibility rules, a tap log with no text in it, and an optional focused-field reader through the
@@ -6,25 +6,25 @@ app's own accessibility service. On iOS, the web and Node it reports `unsupporte
 ([docs/capability-kits.md](../../docs/capability-kits.md) §7).
 
 ```ts
-import { overlay, stateWords } from '@byokit/overlay';
+import { overlay, stateWords } from '@platform-kits/overlay';
 
 const state = await overlay.start({ host: 'window', mood: 'calm', notice: { channel: 'bubble', title: 'Bubble', text: 'On', icon: 'ic_bubble' }, panel: 'Panel' });
 if (state === 'needs-permission') await overlay.openPermission();
 const off = overlay.on('tap', () => overlay.say('Hi'));
 ```
 
-Add the config plugin to `app.json`: `["@byokit/overlay", { "moods": { "calm": "./assets/calm.png" } }]`. It copies
+Add the config plugin to `app.json`: `["@platform-kits/overlay", { "moods": { "calm": "./assets/calm.png" } }]`. It copies
 each mood image into the app's drawables and raises the app's minimum Android version to 8.0 (API 26). The library's
 manifest brings the overlay and foreground-service permissions, the bubble's service and the panel's activity.
 
 `shownFor`, `setApp` and `resetApp` keep the per-app rules; `stateWords(state)` gives the sentence to show for a state.
-`@byokit/overlay/focused-field` reads the focused text field only when the app calls `read()`.
+`@platform-kits/overlay/focused-field` reads the focused text field only when the app calls `read()`.
 
 Nothing reads another app's screen in the background, and the tap log keeps no text and forgets entries after 30 days.
 
 ## Focused field
 
-`@byokit/overlay/focused-field` works through the app's own accessibility service; the kit declares none. The service
+`@platform-kits/overlay/focused-field` works through the app's own accessibility service; the kit declares none. The service
 calls `ByokitAccessibility.attach(this)` in `onServiceConnected` and `ByokitAccessibility.detach(this)` in `onUnbind`,
 and in `onDestroy` (idempotent; cancels outstanding inserts), and its config sets `android:canRetrieveWindowContent="true"` and
 `android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"` (the example's is
@@ -33,7 +33,7 @@ view focus, text changes and selection changes so Chromium keeps its virtual tre
 `flagRequestEnhancedWebAccessibility` is unused on API 26 and later (the kit's supported Android versions). Then:
 
 ```ts
-import { focusedField } from '@byokit/overlay/focused-field';
+import { focusedField } from '@platform-kits/overlay/focused-field';
 
 if (await focusedField.available()) {
   const field = await focusedField.read();          // { app, text, selection } or null
@@ -55,7 +55,7 @@ the foreground app that `rules` and `spots: 'per-app'` follow, and the keyboard'
 The bubble's window never takes focus, so a tap or long press on it leaves the other app's field focused.
 
 ```ts
-import { focusedField } from '@byokit/overlay/focused-field';
+import { focusedField } from '@platform-kits/overlay/focused-field';
 
 const draft = 'First line\nSecond line';
 const capture = new AbortController();
@@ -131,7 +131,7 @@ and proven on an Android emulator (API 36). On iOS, the web and Node `overlay.st
 
 ## One screen picture and a point marker
 
-`@byokit/overlay/screen-frame` asks Android's system consent dialog **every time** `frame()` is called. It captures
+`@platform-kits/overlay/screen-frame` asks Android's system consent dialog **every time** `frame()` is called. It captures
 one PNG after the dialog leaves, stops the projection and foreground service, and returns a local `file://` URI.
 It never uploads the picture. iOS, web and Node return `{ status: 'unsupported' }`; no ReplayKit support is claimed.
 
@@ -140,8 +140,8 @@ the middle of the resulting image. Call it from a button in a foreground Expo de
 load this module). If permission settings open, return to the app and press the button again.
 
 ```ts
-import { overlay } from '@byokit/overlay';
-import { screenFrame } from '@byokit/overlay/screen-frame';
+import { overlay } from '@platform-kits/overlay';
+import { screenFrame } from '@platform-kits/overlay/screen-frame';
 
 export async function showUmerWhere() {
   const state = await overlay.start({

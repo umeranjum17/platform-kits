@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move to `@platform-kits/browser` with the same public API and native identifiers.
+
 - Add isolated Chromium sessions for URLs and local HTML, viewport and device scale settings,
   readiness waits, and PNG captures of a page or element, with an app-selected installed browser.
 

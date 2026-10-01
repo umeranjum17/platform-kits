@@ -1,11 +1,11 @@
-# @byokit/speak
+# @platform-kits/speak
 
 Read a reply aloud through the platform's own text-to-speech. No network, no provider keys, no audio files:
 the web speaks through `speechSynthesis`, Android through `TextToSpeech`, iOS through `AVSpeechSynthesizer`.
 On Node (and anywhere with no engine) `speaker` is `unsupported` unless the host injects one. Private at 0.1.0.
 
 ```ts
-import { speaker, SpeakError } from '@byokit/speak';
+import { speaker, SpeakError } from '@platform-kits/speak';
 
 const voices = await speaker.voices();           // [] where unsupported
 const said = speaker.speak('Hi Umer, done', { rate: 1 });
@@ -30,8 +30,8 @@ The React Native entry loads the Expo module `ByokitSpeak`. Install into an Expo
 engine (tests, Node) injects it:
 
 ```ts
-import { createSpeaker } from '@byokit/speak';
-import type { SpeakEngine } from '@byokit/speak';
+import { createSpeaker } from '@platform-kits/speak';
+import type { SpeakEngine } from '@platform-kits/speak';
 
 declare const engine: SpeakEngine;
 const custom = createSpeaker(engine);

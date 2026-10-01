@@ -1,12 +1,12 @@
 {
-  "name": "@byokit/browser",
+  "name": "@platform-kits/browser",
   "version": "0.1.0",
   "description": "Capture PNGs of URLs or local HTML with an explicitly selected Chromium in an isolated session.",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/umeranjum17/byokit.git",
+    "url": "git+https://github.com/umeranjum17/platform-kits.git",
     "directory": "packages/browser"
   },
   "engines": { "node": ">=22.18" },

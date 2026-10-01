@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { overlay } from '@byokit/overlay';
-import { screenFrame, type ScreenFrameResult } from '@byokit/overlay/screen-frame';
+import { overlay } from '@platform-kits/overlay';
+import { screenFrame, type ScreenFrameResult } from '@platform-kits/overlay/screen-frame';
 
 /** Account-free native proof: opt in at build time with EXPO_PUBLIC_SCREEN_DEMO=1. */
 export function ScreenDemo() {

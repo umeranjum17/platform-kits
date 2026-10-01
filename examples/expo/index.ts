@@ -1,4 +1,3 @@
-import './polyfills';
 import { AppRegistry } from 'react-native';
 import { registerRootComponent } from 'expo';
 
@@ -9,5 +8,5 @@ import App, { BubblePanel } from './App';
 // the environment is set up appropriately
 registerRootComponent(App);
 
-// The panel @byokit/overlay opens on a bubble tap (start's `panel` key).
+// The panel @platform-kits/overlay opens on a bubble tap (start's `panel` key).
 AppRegistry.registerComponent('bubblePanel', () => BubblePanel);

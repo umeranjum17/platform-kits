@@ -1,23 +1,15 @@
 {
-  "name": "byokit-expo",
+  "name": "platform-kits-expo",
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
-    "@byokit/accounts": "file:../../packages/accounts",
-    "@byokit/decide": "file:../../packages/decide",
-    "@byokit/link": "file:../../packages/link",
-    "@byokit/overlay": "file:../../packages/overlay",
-    "@byokit/seal": "file:../../packages/seal",
-    "@byokit/statusbar": "file:../../packages/statusbar",
-    "@byokit/ui-core": "file:../../packages/ui-core",
+    "@platform-kits/overlay": "file:../../packages/overlay",
+    "@platform-kits/statusbar": "file:../../packages/statusbar",
     "expo": "~57.0.25",
     "expo-build-properties": "~57.0.22",
-    "expo-crypto": "~57.0.3",
-    "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "0.86.3",
-    "@byokit/push": "file:../../packages/push"
+    "react-native": "0.86.3"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
@@ -28,7 +20,6 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "mock": "node ../../packages/accounts/src/testing/mock-openai.ts 21455",
     "typecheck": "tsc --noEmit",
     "bundle": "expo export --platform android --platform ios --output-dir dist"
   },

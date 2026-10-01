@@ -1,4 +1,4 @@
-# @byokit/browser
+# @platform-kits/browser
 
 Take a PNG screenshot of a URL, HTML string, or explicitly named local HTML file.
 The app selects an installed Chromium or Chrome. The kit never downloads a browser,
@@ -9,12 +9,12 @@ Firefox, or WebKit entry. No account, subscription, API key, model call, or per-
 is involved. Screenshot bytes stay on the device unless the app sends them elsewhere.
 
 ```sh
-npm install @byokit/browser
+npm install @platform-kits/browser
 ```
 
 ```ts
 import { writeFile } from 'node:fs/promises';
-import { createBrowser, findChromium } from '@byokit/browser';
+import { createBrowser, findChromium } from '@platform-kits/browser';
 
 // The host owns browser installation and this candidate list. No HOME or PATH scan.
 const executablePath = await findChromium(['/usr/bin/chromium', '/usr/bin/google-chrome']);
@@ -101,8 +101,8 @@ conversion, image uploads, and application grading belong to the host.
 For offline tests, pass a fake launcher as `createBrowser`'s second argument:
 
 ```ts
-import { createBrowser } from '@byokit/browser';
-import { fakeBrowser } from '@byokit/browser/testing';
+import { createBrowser } from '@platform-kits/browser';
+import { fakeBrowser } from '@platform-kits/browser/testing';
 
 const fake = fakeBrowser(new Uint8Array([137, 80, 78, 71]));
 // A checked executable stand-in: it will never be spawned by the fake.

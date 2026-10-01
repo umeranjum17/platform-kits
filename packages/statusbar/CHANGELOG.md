@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move to `@platform-kits/statusbar` with the same public API and native identifiers.
+
 ## 0.1.1
 
 - FIX: Export the Expo config plugin and package metadata so installed apps can resolve the plugin; support Expo 55 and later.

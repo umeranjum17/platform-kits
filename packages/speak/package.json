@@ -1,5 +1,5 @@
 {
-  "name": "@byokit/speak",
+  "name": "@platform-kits/speak",
   "version": "0.1.0",
   "private": true,
   "description": "Read a reply aloud through the platform's own text-to-speech: speechSynthesis on web, TextToSpeech on Android, AVSpeechSynthesizer on iOS. No network, no keys.",
@@ -7,7 +7,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/umeranjum17/byokit.git",
+    "url": "git+https://github.com/umeranjum17/platform-kits.git",
     "directory": "packages/speak"
   },
   "engines": {

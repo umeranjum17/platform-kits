@@ -1,4 +1,4 @@
-// `@byokit/speak` React Native entry: the only file loading the 'ByokitSpeak' native module. Where the lookup
+// `@platform-kits/speak` React Native entry: the only file loading the 'ByokitSpeak' native module. Where the lookup
 // is null (Expo Go, or a build without the module) `speaker` is `unsupported`.
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { nativeEngine } from './native.ts';

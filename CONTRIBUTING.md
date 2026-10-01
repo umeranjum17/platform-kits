@@ -1,116 +1,43 @@
-# Contributing to byokit
+# Contributing to platform-kits
 
-Thanks for helping. byokit is for people who just have a ChatGPT-like subscription: every word a person can see must be
-plain (no commands, paths, model ids or error codes), and nothing may touch their other AI tools.
-
-## Setup
-
-Node 22.18 or later.
+Node 22.18 or later. In every fresh checkout run `npm ci` before build, check or tests.
 
 ```sh
 npm ci
-npm run build   # tsc -b: each package's dist/
-npm run check   # tsc over sources and tests, strict
-npm test        # every test in a throwaway HOME (outbound network blocked; loopback fakes stay usable), then a byte-for-byte check of your real ~/.pi
-npm run test:browser   # the PWA example in headless Chromium (npx playwright install chromium, or BYOKIT_CHROME)
-sh scripts/test.sh examples/herdr-kit/e2e.test.ts   # the Herdr kit example, packed, against the fake Herdr
-sh scripts/test.sh examples/openclaw-kit/e2e.test.ts   # the OpenClaw kit example, packed, against the fake Gateway
+npm run build
+npm run check
+npm test
+npm run check:readme
+npm run smoke:pack
 ```
 
-Phones: `examples/expo` (`npm ci`, `npm run typecheck`, `npm run bundle` for the iOS and Android bundles, and
-`./e2e-android.sh <emulator-serial>` to sign in, ask, decide and pair end to end on an emulator against the stand-in
-OpenAI and a link host on this computer).
-Include the Android emulator result in the PR. CI builds both platform bundles; iOS is typechecked and bundled, not
-runtime-tested here because no simulator is available.
+Sources are TypeScript run directly by Node with type stripping: `.ts` relative imports, no enums, namespaces or
+parameter properties. Keep browser and React Native entries free of runtime Node imports. Platform-specific
+entry points and native identities are documented in each package README.
 
-## Rules
+Isolation comes first: tests never read or write the owner's installed applications, logins or tools. The offline
+runner uses a throwaway HOME and blocks every non-loopback connection. Record drives only the explicitly passed
+protocol-v1 recorder or its bundled Linux recorder. Browser launches only the explicit Chromium binary in a private
+profile. Overlay, statusbar and speak run their own native code inside the app. Minimal copied account-isolation
+helpers live in `test-support/` as test support, with no production dependency on BYOKit.
 
-- **Isolation first.** byokit never reads or writes a person's `~/.pi`, `~/.codex`, `~/.claude` or cloud credential files,
-  never uses their environment's API keys (except the explicitly invoked [live eval CLI](packages/decide#evals)), and
-  never runs their CLIs. Runtime kits drive only the aggregator the app names explicitly (the OpenClaw engine the kit
-  installs, the Herdr binary and socket the app passes); byokit tests use fakes and never a person's Herdr. Capability
-  kits ([docs/capability-kits.md](docs/capability-kits.md)) have their own carve-out: `@byokit/write` may load only
-  its exactly pinned public engine package, and `@byokit/record` may spawn only a recorder implementing recorder
-  protocol v1 that the app passes by absolute path, or the bundled Linux X11 recorder; their ordinary tests use fakes; the bundled recorder smoke uses an isolated Xvfb.
-  `@byokit/usage` reads only the sign-in folder the app passes and spawns only the Codex binary the app passes
-  by absolute path, with an environment built from nothing plus what the app passes; its tests use fakes only. `@byokit/overlay` and
-  `@byokit/statusbar` and `@byokit/push` run only their own native code inside the app or its notification extension. `@byokit/cloud` ([docs/cloud-kit.md](docs/cloud-kit.md)) spawns only the
-  `ssh` binary the app passes by absolute path and the `ssh-keyscan` beside it, with the key path the app passes and a
-  kit-owned config, and holds only the provider keys the app's store gives it and the scoped keys it mints for that
-  app. Its tests use a loopback fake and a fake `ssh`. `@byokit/secrets` uses native OS keyring APIs or spawns
-  explicitly selected OS keyring CLIs by absolute path with an environment built from nothing plus only what
-  the host passes. Ordinary tests use fakes; real native keyring CI runs in its own disposable OS session. Tests use
-  the harness in `packages/accounts/src/testing` (a decoy HOME, an fs tracer, canary
-  tokens) and must never need a real account, the network or a model call. `npm test` fails if your own `~/.pi` changed during the run.
-- **One package per concern**, small and dependency-light. Prefer deleting to adding.
-- **Platform boundary.** See [accounts' platform guide](packages/accounts/README.md#which-sign-in-works-where).
-  Its `react-native` and `browser` exports must not import Node modules; computer-only flows belong in the default export.
-- Sources are TypeScript that Node runs directly (type stripping): no enums, namespaces or parameter properties, and
-  relative imports carry the `.ts` extension.
-- Provider terms are data (`packages/accounts/src/catalogue.json`), with a one-line reason and a source. The kit labels
-  and never decides for an app. Anthropic Messages uses an app-passed API key (billed per use), with explicit opt-in.
-- Plain words live in `words.json` and are tested against a banned-jargon list.
-- Pi's `@earendil-works/pi-ai` is pinned exactly. Bump it deliberately, with the isolation tests green.
+For socket tests, export `TMPDIR=$(mktemp -d /tmp/bk-XXXX)` and remove only that directory afterwards.
+Real recorder CI runs `sh scripts/test.sh packages/record/test/real/smoke.test.ts` with ffmpeg and Xvfb installed.
+Browser CI installs Chromium and passes `PLATFORM_KITS_CHROME` to `npm run test:browser`. Ordinary tests need no
+browser binary, account, network or model.
 
-## Pull requests
+The Expo example has only platform demos: `npm ci`, `npm run typecheck`, `npm run bundle` in `examples/expo`.
+CI prebuilds Android, runs native JVM tests and runs overlay/WebView/screen-frame proofs on its own emulator.
+Autolinking names are `:platform-kits-overlay` and `:platform-kits-statusbar`; Kotlin/Expo module identifiers stay
+unchanged. Never use the owner's personal test phone. Speak stays private until its native proof and release gate.
 
-One concern per PR, with the checks above passing. By contributing you agree your work is licensed under Apache-2.0.
+One concern per PR. Changes to shipped package source or dependencies need an Unreleased changelog bullet; preserve
+SECURITY and FIX markers. CI checks release lint, built README examples, packed installs and the Node 22/24 matrix.
+By contributing you agree to Apache-2.0. Do not name recorder products in code, docs or release notes.
 
-## Changelog and release notes
-
-Every package has `packages/<pkg>/CHANGELOG.md`, shipped in its tarball, in this format:
-
-```markdown
-# Changelog
-
-## Unreleased
-
-- SECURITY: <what was exposed, who is affected, what to do>
-- FIX: <what was wrong, what it does now>
-- <any other change, one bullet each>
-
-## 0.3.2 (2026-10-01)
-
-- ...
-```
-
-- Each entry is a `- ` bullet. It may wrap onto following lines indented by exactly two spaces.
-- `SECURITY:` is for anything that exposed a secret, credential, grant or plaintext, or widened what a device
-  or app may do. `FIX:` is for correctness bugs a consumer could have hit. Every other change gets a plain
-  bullet. Put SECURITY first, then FIX, then the rest.
-- An entry that changes what gets billed or which sign-in is used must say "subscription" or
-  "API key (billed per use)" explicitly.
-- Never name competing products in entries, commits, branches or PR text.
-- Version headings are `## <x.y.z>` with an optional ` (<YYYY-MM-DD>)`.
-- A PR that changes `packages/<pkg>/src/**` or the `dependencies` of `packages/<pkg>/package.json` adds at
-  least one bullet under that package's `## Unreleased` (CI's `release lint` fails the PR otherwise; release
-  PRs that only bump `version` are exempt). The PR body copies every `SECURITY:`/`FIX:` bullet verbatim so
-  reviewers see it.
-
-## Releasing
-
-Versions are independent per package (0.x semver): bump minor for new exports, behavior, breaking changes, a
-raised engine floor or a pinned runtime upgrade; patch for fixes, shipped-file docs and pin updates from the
-cascade. No 1.0, no prereleases, no `major`. Internal `@byokit` pins stay exact, so releasing a package
-cascades: published dependents get a patch plus copies of its `SECURITY:`/`FIX:` lines.
-
-Two phases, because publishing happens only from merged main:
-
-1. **prepare** (on a branch, becomes a normal PR): `npm run release -- prepare link=patch relay=minor [--dry-run]`
-2. **publish** (on merged main): `npm run release -- publish [--dry-run]`
-
-Publish only publishes versions not yet on npm, so feature PRs keep versions unchanged and their Unreleased changes wait for the next prepare PR.
-
-Publish locally with the machine's npm session (npm's own 2FA prompt comes through; the script never takes
-an OTP or token), or dispatch `release.yml` (OIDC trusted publishing with provenance, no stored token) once
-the packages' trusted publishers name this repository and workflow file. The first publish of a new package is
-local, then `npm trust github` configures its publisher. `private: true` holds a package back (the unfinished
-kits); the PR that finishes one removes it.
-
-To relay notes to consumers after a publish:
-
-```sh
-npm run -s release -- notes --since <last-relay-timestamp> --json
-```
-
-`@byokit/realtime` dials only the engine endpoint the app selects, with the credential the app passes; provider adapters run in kit-owned child processes. Tests use loopback fakes. See [the realtime contract](docs/realtime-kit.md).
+Versions are independent 0.x semver. Internal scope dependencies are exact pins and release tooling cascades them.
+`npm run release -- prepare record=patch` prepares a reviewed branch; `npm run release -- publish` gates and publishes
+only from merged main. First-publication order is record → statusbar → overlay → browser. Speak is held by its
+private flag. Configure npm trusted publishers for `umeranjum17/platform-kits`, workflow `release.yml`, after the
+organization and packages exist. The workflow uses OIDC provenance without a stored token. No publishing is part of
+the extraction PR; do not dispatch it until npm setup and release authorization are complete.

@@ -12,7 +12,7 @@ updates:
       interval: weekly
     # Internal packages are versioned and cascaded together by release.ts.
     ignore:
-      - dependency-name: '@byokit/*'
+      - dependency-name: '@platform-kits/*'
     groups:
       development:
         dependency-type: development

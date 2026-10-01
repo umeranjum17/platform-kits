@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move to `@platform-kits/record` with the same public API and native identifiers.
+
 ## 0.2.0 (2026-09-30)
 
 - Bundled Linux X11 video recorder, selected when `CaptureOptions.bin` is omitted; explicit bins retain protocol-v1 pass-through.

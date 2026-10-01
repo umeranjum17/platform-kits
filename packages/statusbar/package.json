@@ -1,12 +1,12 @@
 {
-  "name": "@byokit/statusbar",
+  "name": "@platform-kits/statusbar",
   "version": "0.1.1",
   "description": "One ongoing job as a status-bar chip on Android 16 (a promoted ongoing notification), with a counts-only lock-screen copy and up to three actions. On iOS and older Android it reports unsupported.",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/umeranjum17/byokit.git",
+    "url": "git+https://github.com/umeranjum17/platform-kits.git",
     "directory": "packages/statusbar"
   },
   "engines": {

@@ -1,3 +1,4 @@
+// Copied from BYOKit packages/accounts/src/testing/index.ts (Apache-2.0).
 // The isolation harness every byokit package (and every app built on it) tests with: a throwaway HOME holding a decoy
 // of each agent setup a person may already have signed in (Pi, Codex, Claude, shared agent skills), the environment a
 // shell inside one of them hands down, and an fs tracer. A run must leave the decoys byte for byte as they were, never
@@ -51,4 +52,3 @@ export function decoy(root: string) {
     ran: () => readdirSync(marks),
   };
 }
-export { mockJwt, mockOpenAI, type MockOpenAIOptions } from './mock-openai.ts';

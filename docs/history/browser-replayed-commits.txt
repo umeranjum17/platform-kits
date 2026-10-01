@@ -1,0 +1,3 @@
+f3ecaef4fc5f2a4a48a863eab8de589fd3dd49f6 2026-10-01T06:27:25+04:00 umer <umeranjum17@gmail.com> Keep browser profile filesystem failures in plain errors
+a7e5999f9285cd99d9bdbfd7f90ff3fdf08e51af 2026-10-01T06:17:21+04:00 umer <umeranjum17@gmail.com> Make browser fake executable independent of ambient module scope
+ada7060b9dac38861a42502ffa3f9a5618745ed1 2026-10-01T06:14:44+04:00 umer <umeranjum17@gmail.com> Add isolated Node browser screenshot kit

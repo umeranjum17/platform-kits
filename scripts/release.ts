@@ -1,9 +1,9 @@
-// Release tooling for the @byokit monorepo: versions, the dependent cascade,
+// Release tooling for the @platform-kits monorepo: versions, the dependent cascade,
 // gates, tags and GitHub releases. `release.yml` runs the publish step with
 // OIDC provenance; `private: true` holds a package back.
 //
 // Usage:
-//   npm run release -- prepare link=patch relay=minor [--dry-run]
+//   npm run release -- prepare record=patch statusbar=minor [--dry-run]
 //   npm run release -- publish [--dry-run]
 //   npm run release -- lint --base <ref>
 //   npm run -s release -- notes --since <iso> [--json]
@@ -180,8 +180,8 @@ export interface CascadePlan {
   bullets: Map<string, string[]>;
 }
 
-const byokitDir = (name: string): string | null =>
-  name.startsWith("@byokit/") ? name.slice("@byokit/".length) : null;
+const platformDir = (name: string): string | null =>
+  name.startsWith("@platform-kits/") ? name.slice("@platform-kits/".length) : null;
 
 // Fixed-point cascade (§2, §4.1 step 5): exact internal pins follow releases;
 // published dependents in `dependencies` get a patch plus copied notes.
@@ -212,7 +212,7 @@ export function planCascade(
     for (const d of pkgs) {
       for (const scope of ["dependencies", "devDependencies"] as const) {
         for (const [depName, pin] of Object.entries(d[scope])) {
-          const x = byokitDir(depName);
+          const x = platformDir(depName);
           if (!x || !versions.has(x)) continue;
           const next = versions.get(x) as string;
           if (pin === next) continue;
@@ -221,9 +221,9 @@ export function planCascade(
           changed = true;
           const notes = newSectionNotes.get(x) ?? [];
           const copies = notes.map((b) =>
-            b.text.startsWith("(from @byokit/")
+            b.text.startsWith("(from @platform-kits/")
               ? `- ${b.kind}: ${b.text}`
-              : `- ${b.kind}: (from @byokit/${x} ${next}) ${b.text}`,
+              : `- ${b.kind}: (from @platform-kits/${x} ${next}) ${b.text}`,
           );
           if (scope === "dependencies" && !d.isPrivate && published.has(d.dir) && !versions.has(d.dir)) {
             const v = bump(d.version, "patch");
@@ -235,9 +235,9 @@ export function planCascade(
                 return { kind: m[1], text: m[2] } as ChangelogBullet;
               }),
             ]);
-            addBullets(d.dir, [`- Dependency update: pins @byokit/${x} ${next}.`, ...copies]);
+            addBullets(d.dir, [`- Dependency update: pins @platform-kits/${x} ${next}.`, ...copies]);
           } else {
-            addBullets(d.dir, [`- Dependency update: pins @byokit/${x} ${next}.`]);
+            addBullets(d.dir, [`- Dependency update: pins @platform-kits/${x} ${next}.`]);
             if (!versions.has(d.dir)) newSectionNotes.set(d.dir, newSectionNotes.get(d.dir) ?? []);
           }
         }
@@ -261,7 +261,7 @@ export function topoOrder(
     if (p) {
       for (const scope of [p.dependencies, p.devDependencies ?? {}]) {
         for (const name of Object.keys(scope)) {
-          const x = byokitDir(name);
+          const x = platformDir(name);
           if (x && inSet.has(x)) visit(x);
         }
       }
@@ -499,9 +499,9 @@ function cmdPrepare(rest: string[]): void {
   const today = utcToday();
   if (dryRun) {
     console.log("planned versions:");
-    for (const d of order) console.log(`  @byokit/${d} ${byDir.get(d)?.version} -> ${plan.versions.get(d)}`);
+    for (const d of order) console.log(`  @platform-kits/${d} ${byDir.get(d)?.version} -> ${plan.versions.get(d)}`);
     console.log("pin edits:");
-    for (const pin of plan.pins) console.log(`  ${pin.pkg}: @byokit/${pin.dep} ${pin.from} -> ${pin.to}`);
+    for (const pin of plan.pins) console.log(`  ${pin.pkg}: @platform-kits/${pin.dep} ${pin.from} -> ${pin.to}`);
     console.log("changelog diffs:");
     for (const d of order) {
       const preview = prepareChangelog(readChangelog(d) as string, plan.versions.get(d) as string, today, plan.bullets.get(d) ?? []);
@@ -531,15 +531,15 @@ function cmdPrepare(rest: string[]): void {
   for (const pin of plan.pins) {
     const pjPath = join(root, "packages", pin.pkg, "package.json");
     const pjText = readFileSync(pjPath, "utf8");
-    writeFileSync(pjPath, pjText.replace(`"@byokit/${pin.dep}": "${pin.from}"`, `"@byokit/${pin.dep}": "${pin.to}"`));
+    writeFileSync(pjPath, pjText.replace(`"@platform-kits/${pin.dep}": "${pin.from}"`, `"@platform-kits/${pin.dep}": "${pin.to}"`));
   }
   sh("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund"]);
   sh("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund"], { cwd: join(root, "examples/expo") });
   sh("git", ["add", "-A"]);
-  const msg = `chore(release): ${order.map((d) => `@byokit/${d} ${plan.versions.get(d)}`).join(", ")}`;
+  const msg = `chore(release): ${order.map((d) => `@platform-kits/${d} ${plan.versions.get(d)}`).join(", ")}`;
   sh("git", ["commit", "-m", msg]);
   for (const d of order) {
-    console.log(`## @byokit/${d} ${plan.versions.get(d)}`);
+    console.log(`## @platform-kits/${d} ${plan.versions.get(d)}`);
     for (const b of extractNotes(readChangelog(d) as string, plan.versions.get(d) as string)) {
       console.log(`- ${b.kind}: ${b.text}`);
     }
@@ -565,7 +565,7 @@ function cmdPublish(rest: string[]): void {
   }
   if (!onMain && !dryRun) throw new Error("publish refuses: HEAD != origin/main");
   if (!onMain) console.log("warning: HEAD != origin/main (dry-run)");
-  // CI gate: check, browser, engine, react-native and android passed on this sha.
+  // CI gate: Node checks, browser, recorder, native bundles and Android proof on this sha.
   let ciOk = false;
   try {
     const runs = JSON.parse(sh("gh", ["run", "list", "--workflow", "ci.yml", "--commit", head, "--json", "status,conclusion,event"])) as {
@@ -582,7 +582,7 @@ function cmdPublish(rest: string[]): void {
   const npmOf = new Map<string, string[] | null>();
   for (const p of pkgs) npmOf.set(p.dir, npmVersions(p.name));
   const pending = pkgs.filter((p) => !(npmOf.get(p.dir) ?? [])?.includes(p.version));
-  const canonical = ["link", "seal", "secrets", "connect", "reach", "ui-core", "accounts", "realtime", "decide", "relay", "openclaw", "herdr", "write", "record", "overlay", "cloud", "statusbar", "usage", "push"];
+  const canonical = ["record", "statusbar", "overlay", "browser", "speak"];
   const rank = (d: string): number => {
     const i = canonical.indexOf(d);
     return i < 0 ? canonical.length : i;
@@ -604,7 +604,7 @@ function cmdPublish(rest: string[]): void {
     } catch {
       // missing: create it
     }
-    const dir = mkdtempSync(join(tmpdir(), "byokit-release-"));
+    const dir = mkdtempSync(join(tmpdir(), "platform-kits-release-"));
     pendingTmp.add(dir);
     try {
       const notesFile = join(dir, "notes.md");
@@ -657,7 +657,7 @@ function cmdPublish(rest: string[]): void {
         sh("npm", pubArgs, { stdio: "inherit" });
       } catch (e) {
         const done = publishedNow.map((r) => r.pkg).join(", ") || "none";
-        const left = pendingOrder.slice(pendingOrder.indexOf(d)).map((x) => `@byokit/${x}`).join(", ");
+        const left = pendingOrder.slice(pendingOrder.indexOf(d)).map((x) => `@platform-kits/${x}`).join(", ");
         throw new Error(`${(e as Error).message}\npublished this run: ${done}; remaining: ${left}`);
       }
       publishedNow.push({ pkg: p.name, version: p.version });
@@ -696,7 +696,7 @@ function cmdPublish(rest: string[]): void {
     doRelease(tag, `${p.name} ${p.version}`, notes, target);
   }
   for (const r of publishedNow) {
-    for (const b of extractNotes(readChangelog(r.pkg.replace("@byokit/", "")) as string, r.version)) {
+    for (const b of extractNotes(readChangelog(r.pkg.replace("@platform-kits/", "")) as string, r.version)) {
       console.log(`${b.kind} ${r.pkg}@${r.version}: ${b.text}`);
     }
   }
@@ -784,9 +784,9 @@ function cmdNotes(rest: string[]): void {
     lines.sort((a, b) => (a.published < b.published ? -1 : a.published > b.published ? 1 : a.package < b.package ? -1 : 1));
   } else {
     for (const spec of args) {
-      const m = /^(@byokit\/[a-z-]+)@(\d+\.\d+\.\d+)$/.exec(spec) ?? /^([a-z-]+)@(\d+\.\d+\.\d+)$/.exec(spec);
+      const m = /^(@platform-kits\/[a-z-]+)@(\d+\.\d+\.\d+)$/.exec(spec) ?? /^([a-z-]+)@(\d+\.\d+\.\d+)$/.exec(spec);
       if (!m) throw new Error(`bad notes spec: ${spec} (want <pkg>@<version>)`);
-      const dir = m[1].startsWith("@byokit/") ? m[1].slice("@byokit/".length) : m[1];
+      const dir = m[1].startsWith("@platform-kits/") ? m[1].slice("@platform-kits/".length) : m[1];
       const pkgs = workspacePackages();
       const p = pkgs.find((x) => x.dir === dir);
       if (!p) throw new Error(`unknown package: ${dir}`);

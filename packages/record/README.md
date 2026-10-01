@@ -1,11 +1,11 @@
-# @byokit/record
+# @platform-kits/record
 
 Record a screen into a local take, then make an MP4. `Capture` drives the open
 [recorder protocol v1](../../docs/capability-kits.md#6-recorder-protocol-v1).
 It now includes a real Linux X11 recorder. Passing an absolute `bin` selects an external recorder instead.
 
 ```sh
-npm install @byokit/record
+npm install @platform-kits/record
 # Debian/Ubuntu, for the bundled recorder:
 sudo apt-get install ffmpeg
 ```
@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
-import { Capture } from '@byokit/record';
+import { Capture } from '@platform-kits/record';
 
 const question = createInterface({ input: stdin, output: stdout });
 const yes = await question.question('Umer, record this screen for five seconds? Type yes: ');
@@ -87,7 +87,7 @@ to recover. Never remove it while a recording is running.
 The typed Node API uses the same options:
 
 ```ts
-import { Capture, type CaptureOptions } from '@byokit/record';
+import { Capture, type CaptureOptions } from '@platform-kits/record';
 
 const options: CaptureOptions = { stateDir: '/tmp/umer-recorder' };
 const capture = new Capture(options);
@@ -99,7 +99,7 @@ source, events, max duration, title, captions, render settings and the optional 
 OS screen consent remains the external recorder's responsibility: the kit never answers or retries it.
 Planner keys go only over fd 3, never environment, command line or a file.
 
-`@byokit/record/testing` exports `fakeRecorder` and `captureContract` for external integrations.
+`@platform-kits/record/testing` exports `fakeRecorder` and `captureContract` for external integrations.
 The original protocol/client proof was an owner-machine conformance run (BK-C3);
 the kit's fake contract tests remain offline. The bundled backend adds fake media-tool tests and a real
 Linux smoke recording its own isolated Xvfb, stopping, rendering and probing H.264/subtitle output.

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { access, chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { BrowserType, BrowserContext, Page } from "playwright-core";
+import { chromium, type BrowserType, type BrowserContext, type Page } from "playwright-core";
 import { chromiumLauncher } from "../src/chromium.ts";
 import { createBrowser } from "../src/index.ts";
 
@@ -122,4 +122,27 @@ process.exit(1);
     if (previous === undefined) delete process.env.BROWSER_TEST_SECRET; else process.env.BROWSER_TEST_SECRET = previous;
     await rm(root, { recursive: true, force: true });
   }
+});
+
+// Explicit opt-in: CI passes its freshly installed Chromium, never a person's browser/profile.
+test("real Chromium captures a local HTML element and removes its private profile", {
+  skip: !process.env.PLATFORM_KITS_CHROME, timeout: 30_000,
+}, async () => {
+  let profile = '';
+  const launch = chromiumLauncher(chromium);
+  const session = await createBrowser({ executablePath: process.env.PLATFORM_KITS_CHROME!,
+    viewport: { width: 480, height: 320 }, timeoutMs: 10_000 }, options => {
+      profile = options.profileDir;
+      return launch(options);
+    });
+  try {
+    await session.open({ html: '<main id="proof" style="width:120px;height:80px;background:green">Platform kits</main>' });
+    await session.waitFor({ selector: '#proof' });
+    const png = await session.screenshot({ selector: '#proof' });
+    assert.deepEqual(Array.from(png.slice(0, 8)), [137, 80, 78, 71, 13, 10, 26, 10]);
+    const header = Buffer.from(png);
+    assert.equal(header.readUInt32BE(16), 120);
+    assert.equal(header.readUInt32BE(20), 80);
+  } finally { await session.close(); }
+  await assert.rejects(access(dirname(profile)));
 });

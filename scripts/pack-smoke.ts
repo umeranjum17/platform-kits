@@ -43,7 +43,7 @@ export function smokeFailures(results: Map<string, string>): string[] {
 
 function main(): void {
   // No `byokit-` prefix: scripts/test.sh's leak check would blame other runs.
-  const dir = mkdtempSync(join(tmpdir(), "pack-smoke-byokit-"));
+  const dir = mkdtempSync(join(tmpdir(), "pack-smoke-platform-kits-"));
   pendingTmp.add(dir);
   try {
     const tgzDir = join(dir, "tgz");
@@ -89,134 +89,32 @@ function main(): void {
       ["install", "--no-audit", "--no-fund", ...tgzPaths, `typescript@${tsVersion.version}`, "@types/node@22"],
       appDir,
     );
-    // The writing engine must arrive from npm with the packed kit and answer through its default loader.
-    writeFileSync(join(appDir, "write-engine.mjs"), `
-import assert from 'node:assert/strict';
-import { Compose, ENGINE_VERSION, PROTOCOL } from '@byokit/write';
-const writer = new Compose();
-assert.deepEqual(await writer.hello(), { protocol: PROTOCOL, version: ENGINE_VERSION });
-const [check] = await writer.check({ drafts: ['Umer shipped the first version today.'], platform: 'x' });
-assert.equal(check.fits, true);
-assert.equal(check.length, 'Umer shipped the first version today.'.length);
-`);
-    try {
-      sh("node", ["write-engine.mjs"], appDir);
-      pass("@byokit/write [npm engine]");
-    } catch (err) {
-      fail("@byokit/write [npm engine]", (err as Error).message);
-    }
     // Exact internal pins must resolve to the tarball set, never nested copies.
     for (const e of entries) {
-      const nested = join(appDir, "node_modules", e.name, "node_modules", "@byokit");
-      if (existsSync(nested)) fail(e.name, `nested @byokit under ${e.name}: a pin the tarballs do not satisfy`);
+      const nested = join(appDir, "node_modules", e.name, "node_modules", "@platform-kits");
+      if (existsSync(nested)) fail(e.name, `nested @platform-kits under ${e.name}`);
     }
-    writeFileSync(join(appDir, "locked-seal.mjs"), `
+    // The browser package's shipped fake exercises its installed entry and cleanup.
+    writeFileSync(join(appDir, "browser.mjs"), `
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileStore } from '@byokit/accounts';
-import { osKeyringSeal } from '@byokit/secrets/node';
-import { OpenClawKit, stateWords } from '@byokit/openclaw';
-import { fakeGateway } from '@byokit/openclaw/testing';
-const stateDir = join(process.cwd(), 'seal-state');
-mkdirSync(stateDir, { mode: 0o700 });
-const keys = new Map();
-let locked = false;
-const keyring = { get(name) { if (locked) throw new Error('locked'); return keys.get(name) ?? null; },
-  set(name, value) { keys.set(name, value); }, delete: name => keys.delete(name) };
-const o = { service: 'packed-seal', stateDir, keyring };
-const seal = osKeyringSeal(o);
-const path = join(stateDir, 'private', 'accounts.bin');
-await fileStore(path, seal).modify('provider', async () => ({ type: 'api_key', key: 'packed-canary' }));
-const before = readFileSync(path);
-const engineRoot = join(stateDir, 'openclaw');
-mkdirSync(join(engineRoot, 'state'), { recursive: true });
-writeFileSync(join(engineRoot, 'state', 'auth.json'), 'packed-login');
-await new OpenClawKit({ stateDir, authSeal: seal, spawnEngine: false }).prepare();
-const engineFile = join(engineRoot, 'auth-store.sealed');
-const engineBefore = readFileSync(engineFile);
-locked = true;
-const fallback = osKeyringSeal(o);
-await assert.rejects(fileStore(path, fallback).read('provider'), e => e.code === 'keyring-locked');
-const kit = new OpenClawKit({ stateDir, authSeal: fallback, spawnEngine: false, transport: fakeGateway().factory });
-await kit.prepare(); await kit.start();
-assert.equal(kit.state.phase, 'locked');
-assert.match(stateWords(kit.state), /saved sign-in is locked/);
-assert.deepEqual(readFileSync(path), before);
-assert.deepEqual(readFileSync(engineFile), engineBefore);
-locked = false;
-await kit.start(); assert.equal(kit.state.phase, 'ready'); await kit.stop();
-const dual = osKeyringSeal({ ...o, dualWrap: true });
-await fileStore(path, dual).read('provider');
-assert.equal(readFileSync(path)[4], 3);
-const dualKit = new OpenClawKit({ stateDir, authSeal: dual, spawnEngine: false, transport: fakeGateway().factory });
-await dualKit.prepare();
-locked = true;
-assert.equal((await fileStore(path, osKeyringSeal({ ...o, dualWrap: true })).read('provider')).key, 'packed-canary');
-await dualKit.start(); assert.equal(dualKit.state.phase, 'ready'); await dualKit.stop();
-assert.equal(readFileSync(engineFile)[4], 3);
-`);
-    try {
-      sh("node", ["locked-seal.mjs"], appDir);
-      pass("sealing [locked recovery and dual wrapping]");
-    } catch (err) {
-      fail("sealing [locked recovery and dual wrapping]", (err as Error).message);
-    }
-    // The packed kit must refuse a live orphan without failed-start cleanup consuming its guards/store.
-    writeFileSync(join(appDir, "openclaw-orphan.mjs"), `
-import assert from 'node:assert/strict';
-import { once } from 'node:events';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { OpenClawKit, EngineAlreadyRunningError, stateWords } from '@byokit/openclaw';
-import { fakeGateway } from '@byokit/openclaw/testing';
-import { hostKeySeal } from '@byokit/secrets';
-const stateDir = join(process.cwd(), 'orphan-state');
-const root = join(stateDir, 'openclaw');
-const authSeal = hostKeySeal({ key: new Uint8Array(32).fill(9) });
-const kit = new OpenClawKit({ stateDir, authSeal, spawnEngine: false, transport: fakeGateway().factory });
-mkdirSync(join(root, 'state'), { recursive: true });
-writeFileSync(join(root, 'state', 'auth.json'), 'packed-login');
-await kit.prepare();
-const sealed = readFileSync(join(root, 'auth-store.sealed'));
-const deadHost = spawn(process.execPath, ['-e', ''], { stdio: 'ignore' });
-await once(deadHost, 'exit');
-const gateway = spawn(process.execPath, ['-e', 'process.stdout.write("ready"); setInterval(() => {}, 1000)'], { stdio: ['ignore', 'pipe', 'ignore'] });
-await once(gateway.stdout, 'data');
-const pid = join(root, 'gateway.pid');
-const lock = join(root, 'auth-store.lock');
-mkdirSync(lock);
-writeFileSync(join(lock, 'pid'), String(deadHost.pid));
-writeFileSync(pid, String(gateway.pid));
-mkdirSync(join(root, 'state'));
-writeFileSync(join(root, 'state', 'auth.json'), 'packed-refreshed-login');
+import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { createBrowser, findChromium } from '@platform-kits/browser';
+import { fakeBrowser } from '@platform-kits/browser/testing';
+assert.equal(await findChromium([process.execPath]), process.execPath);
+const bytes = new Uint8Array([137, 80, 78, 71]);
+const fake = fakeBrowser(bytes);
+const session = await createBrowser({ executablePath: process.execPath, deviceScaleFactor: 2 }, fake.launch);
 try {
-  await assert.rejects(kit.start(), e => e instanceof EngineAlreadyRunningError && e.code === 'engine-already-running');
-  assert.equal(kit.state.why, 'engine-already-running');
-  assert.match(stateWords(kit.state), /saved sign-in is in use/);
-  await kit.stop();
-  assert.equal(readFileSync(pid, 'utf8'), String(gateway.pid));
-  assert.equal(readFileSync(join(lock, 'pid'), 'utf8'), String(deadHost.pid));
-  assert.deepEqual(readFileSync(join(root, 'auth-store.sealed')), sealed);
-  assert.equal(readFileSync(join(root, 'state', 'auth.json'), 'utf8'), 'packed-refreshed-login');
-} finally {
-  const exited = once(gateway, 'exit'); gateway.kill(); await exited;
-}
-await kit.start();
-assert.equal(kit.state.phase, 'ready');
-assert.equal(readFileSync(join(root, 'state', 'auth.json'), 'utf8'), 'packed-refreshed-login');
-assert.equal(existsSync(pid), false);
-await kit.stop();
-assert.equal(existsSync(lock), false);
-assert.equal(existsSync(join(root, 'state')), false);
+  await session.open({ html: '<main id="screen">Packed</main>' });
+  await session.waitFor({ selector: '#screen' });
+  assert.deepEqual(await session.screenshot({ selector: '#screen' }), bytes);
+  assert.equal(fake.launches[0].deviceScaleFactor, 2);
+} finally { await session.close(); }
+assert.equal(existsSync(dirname(fake.launches[0].profileDir)), false);
 `);
-    try {
-      sh("node", ["openclaw-orphan.mjs"], appDir);
-      pass("@byokit/openclaw [orphan ownership and dead-pid recovery]");
-    } catch (err) {
-      fail("@byokit/openclaw [orphan ownership and dead-pid recovery]", (err as Error).message);
-    }
+    try { sh("node", ["browser.mjs"], appDir); pass("@platform-kits/browser [offline session]"); }
+    catch (err) { fail("@platform-kits/browser [offline session]", (err as Error).message); }
     // Import every export subpath, default and browser conditions.
     const subpaths: { spec: string; browser: boolean }[] = [];
     const bins: { pkg: string; bin: string }[] = [];
@@ -255,19 +153,7 @@ assert.equal(existsSync(join(root, 'state')), false);
     }
     // Consumer typecheck under three module resolutions. Plugins and package metadata are runtime-only exports.
     const consumer = subpaths.filter((s) => !s.spec.endsWith("/app.plugin.js") && !s.spec.endsWith("/package.json")).map((s, i) => `import * as m${i} from ${JSON.stringify(s.spec)};\nvoid m${i};`).join("\n");
-    const anthropicConsumer = `
-import { Accounts, anthropic, type AnthropicResult } from '@byokit/accounts';
-const claude = anthropic({ key: 'app-owned-key' });
-const native = { model: 'explicit-model', max_tokens: 1024,
-  messages: [{ role: 'user' as const, content: 'Hello' }] };
-const text: Promise<string> = claude.respond(native);
-const result: Promise<AnthropicResult> = claude.respond({ ...native, result: true });
-const accountResult: Promise<AnthropicResult> = new Accounts({ offer: ['anthropic'] }).respond('member', {
-  ...native, provider: 'anthropic', key: 'app-owned-key', result: true,
-});
-void text; void result; void accountResult;
-`;
-    writeFileSync(join(appDir, "consumer.ts"), `${consumer}\n${anthropicConsumer}\n`);
+    writeFileSync(join(appDir, "consumer.ts"), `${consumer}\n`);
     const tsc = join(appDir, "node_modules", ".bin", "tsc");
     const configs: Record<string, unknown> = {
       nodenext: {
@@ -319,32 +205,6 @@ void text; void result; void accountResult;
         for (const s of subpaths) fail(s.spec, `typecheck ${name} failed:\n${r.stdout}`);
         break;
       }
-    }
-    // Exercise the packed realtime child entry, not only its static exports.
-    if (tgzByName.has("@byokit/realtime")) {
-      writeFileSync(join(appDir, "realtime.mjs"), `
-import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { realtimeEngine, toolBridge } from '@byokit/realtime/node';
-const server = createServer((_req, response) => response.end('v=0\\r\\ns=voice\\r\\n'));
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const frames = [];
-const bridge = toolBridge({ tools: [], handlers: {}, emit: frame => frames.push(frame), failure: () => 'Failed' });
-const engine = realtimeEngine({ engine: 'chatgpt', auth: { kind: 'plan', access: async () => ({ access: 'test-token', accountId: 'test-account' }) }, endpoint: 'http://127.0.0.1:' + server.address().port, bridge, emit: frame => frames.push(frame) });
-const waitFor = async predicate => {
-  const deadline = Date.now() + 5000;
-  while (!predicate()) { if (Date.now() > deadline) throw new Error('packed realtime timed out'); await new Promise(resolve => setTimeout(resolve, 10)); }
-};
-try {
-  await waitFor(() => frames.some(frame => frame.type === 'realtime.webrtc.start'));
-  assert.equal(engine.receive({ type: 'realtime.webrtc.offer', sdp: 'v=0\\r\\n' }), true);
-  await waitFor(() => frames.some(frame => frame.type === 'realtime.webrtc.answer'));
-  assert.ok(!JSON.stringify(frames).includes('test-token'));
-} finally { engine.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
-console.log('packed-realtime-child-ok');
-`);
-      try { sh("node", ["realtime.mjs"], appDir); }
-      catch (err) { fail("@byokit/realtime", `packed child flow failed: ${(err as Error).message}`); }
     }
     // Package bins must start without a missing-module error.
     for (const { pkg, bin } of bins) {

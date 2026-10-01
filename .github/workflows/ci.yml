@@ -23,6 +23,8 @@ jobs:
       matrix:
         node: ['22', '24']
     steps:
+      - name: Allocate private scratch
+        run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
@@ -35,8 +37,6 @@ jobs:
       - run: npm run check
       - run: node scripts/readme-check.ts
       - run: npm test # throwaway HOME, mocks only: no account, no network, no model
-      - name: M6 preparation dry run (fake provider and fake SSH only)
-        run: node scripts/machine-proof/run.ts --dry-run --output .lab/m6-dry.json
       - run: npm run smoke:pack
       - name: Release lint (PR)
         if: github.event_name == 'pull_request'
@@ -48,28 +48,16 @@ jobs:
         env:
           RELEASE_BASE: ${{ github.event.before }}
         run: npm run release -- lint --base "$RELEASE_BASE" --direct
+      - name: Clean private scratch
+        if: always()
+        run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac
 
-  # Disposable Secret Service session: no user's desktop/keyring and no outbound network in tests.
-  secrets-keyring:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: sudo apt-get update && sudo apt-get install -y dbus-x11 gnome-keyring
-      - name: Native Secret Service round trip and rotation
-        run: sh scripts/test-keyring.sh
-
-  # Real browsers (headless Chromium): the PWA example's sign-in against a stand-in OpenAI, and the Herdr and OpenClaw
-  # kit examples.
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Allocate private scratch
+        run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -78,44 +66,21 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser
-      # The Herdr kit example as someone installs it (packed packages) against the kit's fake Herdr, on a phone-sized page.
-      - run: sh scripts/test.sh examples/herdr-kit/e2e.test.ts
-      # The OpenClaw kit example the same way, against the kit's fake Gateway.
-      - run: sh scripts/test.sh examples/openclaw-kit/e2e.test.ts
+      - name: Browser unit tests and real isolated Chromium
+        run: |
+          PLATFORM_KITS_CHROME="$(node --input-type=module -e 'import { chromium } from "playwright"; console.log(chromium.executablePath())')"
+          export PLATFORM_KITS_CHROME
+          npm run test:browser
+      - name: Clean private scratch
+        if: always()
+        run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac
 
-  openclaw-engine:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: npm run build
-      - run: npm run test:engine
-
-  # @byokit/write against its exactly pinned npm engine, in process and through the engine bin.
-  write-engine:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: npm run build
-      - run: npm run test:write-engine
-
-  # A real screen recorder on a private X display; no owner's display or account.
   record-recorder:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Allocate private scratch
+        run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -125,13 +90,16 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: sh scripts/test.sh packages/record/test/real/smoke.test.ts
+      - name: Clean private scratch
+        if: always()
+        run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac
 
-  # React Native (Expo) on iOS and Android: the example typechecks and Metro builds both Hermes bundles from the kit's
-  # react-native side. The emulator run is examples/expo/e2e-android.sh.
   react-native:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Allocate private scratch
+        run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -146,53 +114,18 @@ jobs:
         working-directory: examples/expo
       - run: npm run typecheck
         working-directory: examples/expo
-      - run: sh scripts/test.sh examples/expo/pairing.test.ts
       - run: npx expo export --platform android --platform ios --output-dir dist
         working-directory: examples/expo
+      - name: Clean private scratch
+        if: always()
+        run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac
 
-  # Frozen Kotlin mirror JVM tests plus the TypeScript dictation consumer on a disposable Android emulator.
-  android:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: npm run build
-      - run: android/test.sh
-      - name: Enable KVM for the disposable emulator
-        run: sudo chmod 666 /dev/kvm
-      - name: Dictation system recognizer consumer
-        uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
-        with:
-          api-level: 35
-          arch: x86_64
-          target: default
-          disable-animations: true
-          script: ./android/gradlew -p examples/dictation-android --no-daemon connectedDebugAndroidTest
-      - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: android-test-reports
-          path: |
-            android/byokit-android/build/reports/tests/
-            examples/dictation-android/build/reports/androidTests/
-            examples/dictation-android/build/outputs/androidTest-results/
-
-  # @byokit/overlay's Expo module: the example prebuilds with the kit's config plugin and assembles with its Kotlin,
-  # then JVM tests, consent/point-marker proof and real Chromium WebView focus/insertion run on an emulator.
   overlay-android:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Allocate private scratch
+        run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -209,7 +142,7 @@ jobs:
       - run: npm run build
       - run: npm ci --no-audit --no-fund
         working-directory: examples/expo
-      - run: CI=1 npx expo prebuild -p android --no-install && (cd android && ./gradlew assembleRelease :byokit-overlay:testDebugUnitTest)
+      - run: CI=1 npx expo prebuild -p android --no-install && (cd android && ./gradlew assembleRelease :platform-kits-overlay:testDebugUnitTest)
         working-directory: examples/expo
         env:
           EXPO_PUBLIC_SCREEN_DEMO: '1'
@@ -223,7 +156,7 @@ jobs:
           target: google_apis
           profile: pixel_7
           disable-animations: true
-          script: cd examples/expo/android && ./gradlew :byokit-overlay:connectedDebugAndroidTest :a11y-demo:connectedDebugAndroidTest -PreactNativeArchitectures=x86_64 && cd .. && ./e2e-screen-frame.sh emulator-5554 .screen-captures
+          script: cd examples/expo/android && ./gradlew :platform-kits-overlay:connectedDebugAndroidTest :a11y-demo:connectedDebugAndroidTest -PreactNativeArchitectures=x86_64 && cd .. && ./e2e-screen-frame.sh emulator-5554 .screen-captures
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -234,13 +167,16 @@ jobs:
         with:
           name: overlay-webview-test-reports
           path: examples/expo/modules/a11y-demo/android/build/outputs/androidTest-results/
+      - name: Clean private scratch
+        if: always()
+        run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac
 
-  # @byokit/statusbar's Expo module, in the overlay-android shape: the example prebuilds with the kit's config plugin and
-  # assembles with its Kotlin, then StatusRules' JVM tests run. The emulator proof is recorded in the PR (BK-S1).
   statusbar-android:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Allocate private scratch
+        run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -257,61 +193,8 @@ jobs:
         run: node scripts/statusbar-expo-smoke.ts
       - run: npm ci --no-audit --no-fund
         working-directory: examples/expo
-      - run: CI=1 npx expo prebuild -p android --no-install && (cd android && ./gradlew assembleDebug :byokit-statusbar:testDebugUnitTest)
+      - run: CI=1 npx expo prebuild -p android --no-install && (cd android && ./gradlew assembleDebug :platform-kits-statusbar:testDebugUnitTest)
         working-directory: examples/expo
-
-  audit:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '24'
-      - run: npm audit --audit-level=high
-      - run: npm audit --audit-level=high
-        working-directory: examples/expo
-
-  push-android:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: examples/expo/package-lock.json
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
-      - run: npm ci --no-audit --no-fund
-        working-directory: examples/expo
-      - run: CI=1 npx expo prebuild -p android --no-install && (cd android && ./gradlew assembleDebug :byokit-push:testDebugUnitTest)
-        working-directory: examples/expo
-
-  push-ios:
-    runs-on: macos-26
-    env:
-      # Expo 57 requires Xcode 26.4+; match its supported SDK 57 build image's Xcode 26.6.
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: examples/expo/package-lock.json
-      - run: swift test
-        working-directory: packages/push/ios
-      - run: npm ci --no-audit --no-fund
-        working-directory: examples/expo
-      - run: CI=1 npx expo prebuild -p ios --no-install
-        working-directory: examples/expo
-      - run: pod install
-        working-directory: examples/expo/ios
-      - run: xcodebuild -workspace byokitexample.xcworkspace -scheme byokitexample -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-        working-directory: examples/expo/ios
+      - name: Clean private scratch
+        if: always()
+        run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac

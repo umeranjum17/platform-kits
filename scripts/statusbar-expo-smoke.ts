@@ -25,7 +25,7 @@ try {
   // SDK 55's supported React Native/React pair; normal peer resolution (no legacy-peer-deps).
   console.log(run('npm', ['install', '--no-audit', '--no-fund', 'expo@~55.0.0', 'react-native@0.83.2', 'react@19.2.0', join(scratch, packed!.filename)]));
   const require = createRequire(join(app, 'package.json'));
-  const plugin = require.resolve('@byokit/statusbar/app.plugin.js');
+  const plugin = require.resolve('@platform-kits/statusbar/app.plugin.js');
   assert.ok(plugin.startsWith(join(app, 'node_modules')), 'resolve the packed install, not a workspace symlink');
   assert.equal(typeof require(plugin).default, 'function');
   const expoVersion = (require('expo/package.json') as { version: string }).version;
@@ -33,7 +33,7 @@ try {
   console.log(`Expo ${expoVersion}; packed plugin: ${plugin}`);
   writeFileSync(join(app, 'app.json'), JSON.stringify({ expo: {
     name: 'StatusbarSmoke', slug: 'statusbar-smoke', android: { package: 'io.byokit.statusbarsmoke' },
-    plugins: ['@byokit/statusbar'],
+    plugins: ['@platform-kits/statusbar'],
   } }));
   console.log(run(join(app, 'node_modules/.bin/expo'), ['prebuild', '--platform', 'android', '--no-install']));
   const manifest = readFileSync(join(app, 'android/app/src/main/AndroidManifest.xml'), 'utf8');

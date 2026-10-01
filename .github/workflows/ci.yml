@@ -165,10 +165,13 @@ jobs:
           sudo chmod 666 /dev/kvm
       - name: Install the emulator image with download diagnostics and retries
         run: |
-          sdkmanager --version
+          # The emulator action adds this directory to PATH only in its later step.
+          sdk_manager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$sdk_manager"
+          "$sdk_manager" --version
           df -h "$ANDROID_HOME" "$TMPDIR"
           for attempt in 1 2 3; do
-            if sdkmanager --install 'system-images;android-36;google_apis;x86_64' --channel=0 --verbose; then
+            if "$sdk_manager" --install 'system-images;android-36;google_apis;x86_64' --channel=0 --verbose; then
               test -f "$ANDROID_HOME/system-images/android-36/google_apis/x86_64/package.xml"
               exit 0
             fi

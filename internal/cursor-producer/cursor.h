@@ -10,6 +10,7 @@ struct ext_image_copy_capture_manager_v1;
 struct ext_image_capture_source_v1;
 struct ext_image_copy_capture_session_v1;
 struct wl_pointer;
+struct wl_shm;
 struct pw_stream;
 struct pk_cursor;
 
@@ -30,6 +31,18 @@ void pk_cursor_destroy(struct pk_cursor *cursor);
  * The caller owns frame objects/buffers, NOT the returned session object.
  */
 struct ext_image_copy_capture_session_v1 *pk_cursor_image_session(struct pk_cursor *cursor);
+
+/* Optional built-in SHM cursor-image capturer. Call once instead of installing
+ * your own image-session listener. Borrows shm from the SAME private connection.
+ * The capturer owns its frame objects, buffers, and memfd mapping. Never opens
+ * a compositor socket or maps a device. Frees everything on cursor destruction.
+ */
+int pk_cursor_capture_shm(struct pk_cursor *cursor, struct wl_shm *shm);
+
+/* Wake the portal's delivery loop on changed real cursor state or failure.
+ * callback may schedule delivery; it MUST NOT re-enter/destroy the adapter.
+ */
+void pk_cursor_set_wake(struct pk_cursor *cursor, void (*callback)(void *), void *data);
 
 /* Call ONLY on cursor-image frame.ready, using its captured bytes and presentation
  * time. Supported here: normal-transform wl_shm ARGB8888/XRGB8888 on little-endian

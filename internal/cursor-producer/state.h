@@ -13,6 +13,9 @@
 struct pk_cursor {
     struct ext_image_copy_capture_cursor_session_v1 *pointer_session;
     struct ext_image_copy_capture_session_v1 *image_session;
+    struct pk_shm_capture *capture;
+    void (*wake)(void *);
+    void *wake_data;
     uint32_t source_width, source_height;
     bool entered, positioned, hotspot_known, image_known, image_visible, stopped;
     int32_t x, y, hotspot_x, hotspot_y, pending_hotspot_x, pending_hotspot_y;
@@ -26,4 +29,5 @@ void pk_cursor_enter(struct pk_cursor *cursor);
 void pk_cursor_leave(struct pk_cursor *cursor);
 void pk_cursor_position(struct pk_cursor *cursor, int32_t x, int32_t y);
 void pk_cursor_hotspot(struct pk_cursor *cursor, int32_t x, int32_t y);
+void pk_cursor_capture_destroy(struct pk_cursor *cursor);
 #endif

@@ -13,10 +13,18 @@ static void changed(struct pk_cursor *c)
     struct timespec now;
     if (clock_gettime(CLOCK_MONOTONIC, &now) < 0 || c->revision == UINT64_MAX) {
         c->stopped = true;
+        if (c->wake) c->wake(c->wake_data);
         return;
     }
     c->observed_ns = (int64_t)now.tv_sec * 1000000000 + now.tv_nsec;
     c->revision++;
+    if (c->wake && c->positioned && c->image_known) c->wake(c->wake_data);
+}
+
+void pk_cursor_set_wake(struct pk_cursor *c, void (*callback)(void *), void *data)
+{
+    c->wake = callback;
+    c->wake_data = data;
 }
 
 void pk_cursor_enter(struct pk_cursor *c)
@@ -57,7 +65,9 @@ void pk_cursor_hotspot(struct pk_cursor *c, int32_t x, int32_t y)
 
 void pk_cursor_stop(struct pk_cursor *c)
 {
+    if (c->stopped) return;
     c->stopped = true;
+    if (c->wake) c->wake(c->wake_data);
 }
 
 int pk_cursor_image_ready(struct pk_cursor *c, const void *pixels, size_t length,
@@ -70,18 +80,18 @@ int pk_cursor_image_ready(struct pk_cursor *c, const void *pixels, size_t length
     if (!c->hotspot_known) return -EAGAIN;
     if (transform != WL_OUTPUT_TRANSFORM_NORMAL || *(const uint8_t *)&endian != 1 ||
         (format != WL_SHM_FORMAT_ARGB8888 && format != WL_SHM_FORMAT_XRGB8888)) {
-        c->stopped = true;
+        pk_cursor_stop(c);
         return -ENOTSUP;
     }
     if (!pixels || !w || !h || w > PK_CURSOR_MAX_SIDE || h > PK_CURSOR_MAX_SIDE ||
         stride < w * 4 || (size_t)(h - 1) * stride + w * 4 > length || presentation_ns < 0 ||
         (c->image_known && presentation_ns < c->presentation_ns)) {
-        c->stopped = true;
+        pk_cursor_stop(c);
         return -EINVAL;
     }
     const size_t bytes = (size_t)w * h * 4;
     unsigned char *image = malloc(bytes);
-    if (!image) { c->stopped = true; return -ENOMEM; }
+    if (!image) { pk_cursor_stop(c); return -ENOMEM; }
     bool visible = false;
     for (uint32_t y = 0; y < h; y++) {
         memcpy(image + (size_t)y * w * 4, (const unsigned char *)pixels + (size_t)y * stride, w * 4);

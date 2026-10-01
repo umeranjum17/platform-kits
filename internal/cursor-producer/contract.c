@@ -9,8 +9,15 @@
 #include <spa/param/video/format.h>
 #include <wayland-client-protocol.h>
 
+static void wake(void *data) { (*(unsigned int *)data)++; }
+
 int main(void)
 {
+    /* Link the real Wayland/image/PipeWire modules and reject missing handles
+     * before any connection/request can be made. */
+    assert(pk_cursor_create(NULL, NULL, NULL, 1920, 1080) == NULL);
+    assert(pk_cursor_capture_shm(NULL, NULL) == -EINVAL);
+    assert(pk_cursor_negotiate(NULL) == -EINVAL);
     unsigned char *data = calloc(1, PK_CURSOR_META_SIZE);
     assert(data);
     struct spa_meta_header header = { .pts = 923456789, .seq = 99 };
@@ -20,11 +27,14 @@ int main(void)
     };
     struct spa_buffer buffer = { .n_metas = 2, .metas = meta };
     struct pk_cursor c = { .source_width = 1920, .source_height = 1080 };
+    unsigned int wakes = 0;
+    pk_cursor_set_wake(&c, wake, &wakes);
     struct pk_cursor_provenance sample;
     struct spa_meta_cursor *out = (void *)data;
     const unsigned char image[] = { 1, 2, 3, 255, 4, 5, 6, 0 };
     assert(pk_cursor_write(&c, &buffer, &sample) == -EAGAIN && out->id == 0);
     pk_cursor_enter(&c);
+    assert(wakes == 0);
     assert(pk_cursor_image_ready(&c, image, sizeof(image), 2, 1, 8,
         WL_SHM_FORMAT_ARGB8888, WL_OUTPUT_TRANSFORM_NORMAL, 100) == -EAGAIN);
     pk_cursor_hotspot(&c, 1, 0);
@@ -34,6 +44,9 @@ int main(void)
     /* Protocol coordinates already include selected-source normalization and
      * transform. They must pass through without desktop origin/hotspot addition. */
     pk_cursor_position(&c, 103, 207);
+    const unsigned int before_duplicate = wakes;
+    pk_cursor_position(&c, 103, 207);
+    assert(wakes == before_duplicate);
     assert(pk_cursor_write(&c, &buffer, &sample) == 1);
     assert(out->id != 0 && out->position.x == 103 && out->position.y == 207);
     assert(out->hotspot.x == 1 && sample.visible && sample.observed_monotonic_ns > 0);
@@ -79,6 +92,7 @@ int main(void)
     meta[0].size = PK_CURSOR_META_SIZE;
     assert(pk_cursor_write(&c, &buffer, &sample) == 1 && sample.visible);
     pk_cursor_stop(&c);
+    assert(wakes > 0);
     assert(pk_cursor_write(&c, &buffer, &sample) == -EPIPE && out->id == 0);
     assert(header.pts == 923456789 && header.seq == 99);
     free(c.image);

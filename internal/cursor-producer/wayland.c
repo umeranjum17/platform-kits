@@ -44,6 +44,7 @@ struct ext_image_copy_capture_session_v1 *pk_cursor_image_session(struct pk_curs
 void pk_cursor_destroy(struct pk_cursor *c)
 {
     if (!c) return;
+    pk_cursor_capture_destroy(c);
     if (c->image_session) ext_image_copy_capture_session_v1_destroy(c->image_session);
     if (c->pointer_session) ext_image_copy_capture_cursor_session_v1_destroy(c->pointer_session);
     free(c->image);

@@ -14,7 +14,8 @@ dispatch, and cleanup.
 ## Build and offline contract
 
 Dependencies: C11 compiler, pkg-config, Wayland client headers/library,
-wayland-scanner, wayland-protocols with both image capture protocols, and PipeWire
+wayland-scanner, wayland-protocols with both image capture protocols and
+ext-foreign-toplevel-list (image-capture-source's link dependency), and PipeWire
 headers/library. Build artifacts remain under `build/`.
 
 ```sh
@@ -35,14 +36,24 @@ is unqualified. Serialize builds and checks with the task's heavy-job lock.
    Supply the main capture's transformed buffer pixel dimensions. Recreate the
    adapter if the source geometry changes. Handle denied/pending permissions by
    refusing Metadata; an advertised global alone proves no access.
-2. Reuse the portal's cursor-image capture loop on `pk_cursor_image_session`.
+2. Call `pk_cursor_capture_shm` with the connection's borrowed `wl_shm`, or reuse
+   the portal's cursor-image capture loop on `pk_cursor_image_session`.
+   The built-in capturer owns a memfd, mapping, buffer and pending frame; it
+   negotiates ARGB/XRGB, captures genuine cursor bytes, validates presentation
+   time and transform, and releases these objects on adapter destruction.
+   Set `pk_cursor_set_wake` to schedule portal delivery on complete real state changes
+   independently of main pixel damage; initialization waits for a real position
+   and captured image before waking delivery. The wake callback must defer work rather
+   than re-enter or destroy the adapter. If using the portal's own image loop:
    Attach its session listener before dispatch. Negotiate SHM constraints, allocate
    actual Wayland buffers, and allow at most one pending frame. On `frame.ready`,
    call `pk_cursor_image_ready` with actual bytes, byte length, dimensions, stride,
    format, transform, and compositor monotonic presentation time. Destroy the
    completed frame before requesting another. Call `pk_cursor_stop` on stopped,
    revoked, malformed or failed capture and propagate refusal/end to the consumer.
-   Destroy pending frame objects before destroying the adapter.
+   Destroy caller-owned pending frame objects before destroying the adapter.
+   The built-in loop ends on failed/stopped capture rather than spinning or
+   retaining a stale successful state. All such failures require portal teardown.
 3. Add `pk_cursor_negotiate` alongside the stream's existing format, buffer, header,
    and transform parameters. Require actual cursor metadata allocation. In the
    portal's serialized delivery callback, fill cursor-free pixels from a genuine
@@ -135,6 +146,20 @@ the supervisor-routed Desklink evidence location after ownership is coordinated;
 this worker has not written into another project's lab. No live clip or raw sample
 artifact currently exists.
 
+`python3 internal/cursor-producer/nested-smoke.py` checks the private nesting
+prerequisite using the existing cage's user/mount/PID, fresh runtime/bus/PipeWire,
+renderD129-only and headless-parent invariants. It accepts no ambient socket
+override, mounts neither host HOME nor runtime/tmp/seat, disables Xwayland, and
+uses the signed parent prefix above. At load above 8 it writes a paused result
+and exits 75 before starting a cage. At acceptable load it blocks outside the
+home lock, then takes the Desklink lock, rechecks load and starts a bounded private
+parent/child smoke. Outputs are under `output/nested-smoke/`: launcher and daemon
+logs, namespace identity/survivors, and startup-only results. This prerequisite
+does not replace Desklink's actual portal-g2g acceptance run. A socket alone is
+startup evidence; it never enables cursor support. A failed nested startup has
+no ambient fallback. Teardown terminates/kills and waits for owned children and
+checks the dead PID namespace for survivors.
+
 ## Primary sources and licensing
 
 - [Protocol XML, pinned](https://github.com/wayland-mirror/wayland-protocols/blob/819004adb3ab7e46f3fa3caef05b96e20434b244/staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml):
@@ -152,6 +177,29 @@ artifact currently exists.
   official task-private parent candidates declare MIT. Package extraction must
   verify Arch signatures and retain package license files under the ignored
   task runtime prefix. No distribution/publication is authorized.
+- [Arch libliftoff package](https://archlinux.org/packages/extra/x86_64/libliftoff/):
+  MIT, parent runtime dependency only. Its presence does not authorize KMS access;
+  the cage must expose no card/input/seat devices and use only the headless parent.
+
+Task acquisition retained signed Sway 1.12-4 and wlroots 0.20.2-1, with hashes:
+
+| Package | SHA-256 |
+| --- | --- |
+| sway | `5704cfc9eba9804116c665cb4450352bf5a240c1a8300b36aca3218116648443` |
+| wlroots0.20 | `8b1da3fbf29cc45908d8de771bd22a5813b298a9049462df5b8952f23c3ffb8f` |
+| libliftoff | `59cf08c21500673a14287b83b89b6db5389134cc24c97d9222c7cddefa639ccf` |
+
+These were extracted only under `<worktree>/.runtime/parent/root`; package
+signatures were verified against a task-local dearmored copy of the installed
+Arch keyring. The parent runtime library path is that prefix's `usr/lib`; Sway
+and swaymsg are under `usr/bin`. No compositor launch is established by package
+acquisition or a dynamic-library check.
+
+The first successful offline build used installed wayland-client 1.26.0,
+wayland-protocols 1.49, and PipeWire 1.6.8. Installed image-copy XML SHA-256:
+`41a446653f788fabb404cab3168c0bd667c1ff4b54f1f0bb1e18810a1f47d73f`;
+image-capture-source XML:
+`4ef41d15e4cdb9f550158391358ceec724a6708b43b7efedec03121a6bb8458d`.
 
 The preserved feasibility report and Desklink `producer-gap.md` remain the
 source-pinned direction and acceptance authority.

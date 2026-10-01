@@ -62,7 +62,7 @@ test('records, stops by state, rejects overlap, cleans state, and passes render 
   assert.deepEqual(readdirSync(b.state), []);
   // 30 fps constant rate into a lossless master, so the one lossy pass is make().
   const grab = (JSON.parse(readFileSync(join(b.dir, 'record-args'), 'utf8')) as string[]).join(' ');
-  assert.match(grab, /-framerate 30 .*-fps_mode cfr -r 30 -c:v libx264rgb -preset ultrafast -qp 0 /);
+  assert.match(grab, /-framerate 30 .*-fps_mode cfr -r 30 -c:v libx264rgb -preset ultrafast -tune zerolatency -qp 0 /);
   const take = lines[1]!.take as string;
   const before = readdirSync(take);
   const plan = await call(['capture', 'make', take, '--no-planner', '--plan-only'], b.tools);

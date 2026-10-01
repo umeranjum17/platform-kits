@@ -90,10 +90,11 @@ async function record(flags: Map<string, string[]>, tools: RecorderTools, output
     take = mkdtempSync(join(root, 'take-'));
     // 30 fps constant rate into a lossless RGB take: make() is the only lossy pass, so text stays sharp.
     // Keeping the screen's own pixel format skips a per-frame colour conversion that drops frames on a busy machine,
-    // and the queue lets grabbing run ahead while the encoder catches up.
+    // and the queue lets grabbing run ahead while the encoder catches up. Sliced threads (zerolatency) put the first
+    // frame out at once, so `recording` is reported when capture starts rather than seconds later.
     media = spawn(tools.ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-thread_queue_size', '64', '-f', 'x11grab',
       '-framerate', '30', '-i', source!.slice(4), '-t', String(seconds), '-an', '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2',
-      '-fps_mode', 'cfr', '-r', '30', '-c:v', 'libx264rgb', '-preset', 'ultrafast', '-qp', '0',
+      '-fps_mode', 'cfr', '-r', '30', '-c:v', 'libx264rgb', '-preset', 'ultrafast', '-tune', 'zerolatency', '-qp', '0',
       '-progress', 'pipe:1', join(take, 'raw.mp4')],
     { env: tools.env, stdio: ['pipe', 'pipe', 'pipe'] });
     let progress = '', tail = '';

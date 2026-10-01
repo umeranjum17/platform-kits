@@ -149,7 +149,7 @@ export interface SocialStatus {
 
 export type PostResult =
   | { ok: true; post: SocialPost; url?: string; remoteId?: string }
-  | { ok: false; post: SocialPost; code: SocialErrorCode }
+  | { ok: false; post: SocialPost; code: SocialErrorCode; until?: number }
   | { handoff: HandoffTicket; post: SocialPost };
 
 export type SocialEvent =

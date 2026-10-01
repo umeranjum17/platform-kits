@@ -393,7 +393,8 @@ export class Social {
       } catch (error) {
         const code: SocialErrorCode = error instanceof SocialError ? error.code : "network";
         update = { phase: notPosted.has(code) ? "failed" : "unknown", code };
-        result = { ok: false, post: { ...post, ...update }, code };
+        const until = error instanceof SocialError ? error.until : undefined;
+        result = { ok: false, post: { ...post, ...update }, code, ...(until !== undefined ? { until } : {}) };
         if (code === "signed-out" || code === "locked") await this.#setAccountPhase(account.id, code);
       }
     }

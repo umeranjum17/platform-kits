@@ -1,7 +1,7 @@
 {
   "name": "platform-kits-monorepo",
   "private": true,
-  "description": "Generic platform kits: overlay, statusbar, record, speak and browser.",
+  "description": "Generic platform kits: overlay, statusbar, record, speak, browser and social.",
   "license": "Apache-2.0",
   "type": "module",
   "workspaces": [
@@ -11,7 +11,7 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "build": "tsc -b packages/record packages/statusbar packages/overlay packages/speak packages/browser && node scripts/fix-words-dts.cjs",
+    "build": "tsc -b packages/record packages/statusbar packages/overlay packages/speak packages/browser packages/social && node scripts/fix-words-dts.cjs",
     "check": "tsc -p tsconfig.json",
     "release": "node scripts/release.ts",
     "lint": "node scripts/release.ts lint",

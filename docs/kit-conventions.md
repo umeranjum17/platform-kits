@@ -7,7 +7,7 @@ the scope move preserves every existing signature, native identifier and recorde
 ## 1. Names
 
 Packages are `@platform-kits/<name>` in `packages/<name>`, with capability names: overlay, statusbar, record,
-speak and browser. The directory matches the npm suffix. Release tags are `<name>-v<version>`. The first scope
+speak, browser and social. The directory matches the npm suffix. Release tags are `<name>-v<version>`. The first scope
 migration keeps the source versions. An unpublished kit is named before first publication.
 
 ## 2. Codes

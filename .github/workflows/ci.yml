@@ -66,6 +66,20 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Permit the test Chromium sandbox on Ubuntu
+        run: |
+          browser_bin="$(node --input-type=module -e 'import { chromium } from "playwright"; console.log(chromium.executablePath())')"
+          # Ubuntu 24.04 restricts user namespaces for downloaded binaries. Allow only
+          # this installed test binary, keeping the kit's Chromium sandbox enabled.
+          # https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
+          sudo tee /etc/apparmor.d/platform-kits-test-chromium > /dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile platform-kits-test-chromium "$browser_bin" flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo apparmor_parser -r /etc/apparmor.d/platform-kits-test-chromium
       - name: Browser unit tests and real isolated Chromium
         run: |
           PLATFORM_KITS_CHROME="$(node --input-type=module -e 'import { chromium } from "playwright"; console.log(chromium.executablePath())')"
@@ -149,6 +163,19 @@ jobs:
           NODE_ENV: production
       - run: |
           sudo chmod 666 /dev/kvm
+      - name: Install the emulator image with download diagnostics and retries
+        run: |
+          sdkmanager --version
+          df -h "$ANDROID_HOME" "$TMPDIR"
+          for attempt in 1 2 3; do
+            if sdkmanager --install 'system-images;android-36;google_apis;x86_64' --channel=0 --verbose; then
+              test -f "$ANDROID_HOME/system-images/android-36/google_apis/x86_64/package.xml"
+              exit 0
+            fi
+            echo "Emulator image download attempt $attempt failed."
+            if [ "$attempt" -lt 3 ]; then sleep 10; fi
+          done
+          exit 1
       - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 36

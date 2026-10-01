@@ -133,7 +133,13 @@ test("real Chromium captures a local HTML element and removes its private profil
   const session = await createBrowser({ executablePath: process.env.PLATFORM_KITS_CHROME!,
     viewport: { width: 480, height: 320 }, timeoutMs: 10_000 }, options => {
       profile = options.profileDir;
-      return launch(options);
+      return launch(options).catch(error => {
+        // This opt-in fixture launches only an explicitly installed test browser,
+        // with kit-owned paths and no host secrets. Keep runner launch diagnostics
+        // here; the public API still suppresses raw errors for application content.
+        console.error('Installed test Chromium failed to launch:', error);
+        throw error;
+      });
     });
   try {
     await session.open({ html: '<main id="proof" style="width:120px;height:80px;background:green">Platform kits</main>' });

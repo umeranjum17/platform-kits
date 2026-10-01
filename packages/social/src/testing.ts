@@ -22,11 +22,12 @@ export function fakeClock(start = Date.UTC(2026, 9, 1, 9, 0, 0)): { now(): numbe
 }
 
 /**
- * An API provider that records what it would have published. `fail` makes the next send throw that code;
- * `throwRaw` makes it throw a plain error, like a dropped connection.
+ * An API provider that records what it would have published and which handles it revoked. `fail` makes the next
+ * send throw that code; `throwRaw` makes it throw a plain error, like a dropped connection.
  */
 export function fakeProvider(options: { network?: string; maxLength?: number } = {}) {
   const sent: SendRequest[] = [];
+  const revoked: string[] = [];
   let next: { code?: SocialErrorCode; raw?: boolean } | undefined;
   const provider: SocialProvider = defineProvider({
     network: options.network ?? "fake", publish: "api", review: "none", needs: [], humanAuthored: [],
@@ -47,9 +48,10 @@ export function fakeProvider(options: { network?: string; maxLength?: number } =
       sent.push(request);
       return { remoteId: `fake-${sent.length}`, url: `https://fake.invalid/post/${sent.length}` };
     },
+    async disconnect(ctx) { revoked.push(ctx.account.handle); },
   });
   return {
-    provider, sent,
+    provider, sent, revoked,
     fail(code: SocialErrorCode) { next = { code }; },
     throwRaw() { next = { raw: true }; },
   };

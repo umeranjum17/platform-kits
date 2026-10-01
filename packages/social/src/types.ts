@@ -108,6 +108,8 @@ export interface HandoffTicket {
   /** Page where a person posts by hand. */
   deepLink: string;
   copyBlocks: { label: string; text: string }[];
+  /** The approved media, to attach by hand; the bytes are in the host's queue under each `sha256`. */
+  assets: MediaRef[];
   /** Native share targets, where the network's app accepts one; the host fires it, the kit never does. */
   share?: { android?: AndroidShareIntent };
   checklist: { rule: string; source: string }[];

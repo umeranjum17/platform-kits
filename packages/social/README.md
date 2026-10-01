@@ -3,10 +3,11 @@
 Connect your own social accounts, draft posts, approve them, and post now or on a schedule. Nothing reaches a
 network without a person's approval of the exact post. Bluesky and Mastodon post through their APIs; Hacker News,
 Product Hunt, X, Reddit, TikTok, LinkedIn, Threads, Instagram and YouTube produce a handoff ticket: the text, a
-prefilled link and a checklist for a person to post by hand.
+prefilled link, the approved media as `assets` and a checklist for a person to post by hand.
 
-The main entry is portable: it uses only `fetch`, Web Crypto, `URL` and `TextEncoder`, so it runs in Node,
-Electron, a browser or PWA, and React Native (with a Web Crypto polyfill). `@platform-kits/social/node` adds a
+The main entry is portable: it uses only `fetch`, Web Crypto, `URL`, `TextEncoder` and `Intl.Segmenter`, so it runs
+in Node, Electron, a browser or PWA, and React Native (with Web Crypto and `URL` polyfills; without `Intl.Segmenter`,
+length checks count code points). `@platform-kits/social/node` adds a
 file-backed queue and a scheduler loop. No account, key or subscription comes with the kit: each app brings its
 own accounts and, for OAuth, its own client registration. Still `private: true`; not published yet.
 
@@ -60,7 +61,10 @@ void runScheduler(social, { intervalMs: 30_000, signal: controller.signal });
   `stale-approval`. Nothing is published late because a date passed.
 - **Unknown outcomes are not re-sent blindly.** If the connection drops mid-send, or the process stops while a post
   is publishing, the post becomes `unknown`. `retry(approvalId)` re-sends with the same idempotency material: the
-  same Bluesky record key, or the same Mastodon `Idempotency-Key` within its one-hour window.
+  same Bluesky record key, or the same Mastodon `Idempotency-Key` within its one-hour window. It re-sends only the
+  approved payload; after an edit it is refused with `approval-void` and the post stays `unknown`.
+- **Checks run twice.** `approve()` refuses a draft with an error-level issue, and the send runs the checks again,
+  so a post that no longer fits the account (say, a lower instance limit) fails as `check-failed`.
 - **Human-written fields.** Hacker News titles and text and the Product Hunt first comment must be written by a
   person. An agent-written value blocks approval until a person edits it or the approver passes `humanWritten: true`.
 - There is deliberately no auto-approve option. The kit cannot prove a person called `approve()`; the host must call
@@ -71,7 +75,7 @@ void runScheduler(social, { intervalMs: 30_000, signal: controller.signal });
 | `connect(network, input)` | Signs in and stores sealed records; returns the account or a `{ url, finish, cancel }` flow |
 | `accounts()` / `disconnect(id, { confirm: id })` | Lists accounts; deletes an account's sealed records |
 | `draft(input)` / `edit(id, patch, { revision, origin })` | Creates or edits a draft; a stale revision is `draft-stale` |
-| `check(id)` | Issues with `code`, `severity` and `field` |
+| `check(id)` | Issues with `code`, `severity` and `field`, such as `too-long`, `malformed-text` or a `near-duplicate` warning when another account has the same text |
 | `approve(id, { revision, by, at, expiresMs?, humanWritten? })` | The gate; replaces the draft's previous open approval |
 | `schedule(approvalId)` / `runDue()` / `cancel(approvalId)` | Queue, post due approvals, cancel |
 | `post(approvalId)` / `retry(approvalId)` | Post now; retry an `unknown` outcome |
@@ -89,7 +93,7 @@ before anything is sent reject with `SocialError`, whose `code` is stable and wh
 | Mastodon | `mastodonProvider()` | Per-instance OAuth with PKCE, or an owner-generated token | Instance limits read at connect; posts read back to catch silent drops |
 | Hacker News | `hackerNewsHandoff()` | Public username only | Prefilled submit link; title and text must be human-written |
 | Product Hunt | `productHuntHandoff()` | None | Launch fields with length checks; launch from a personal account |
-| X | `xProvider()` | None by default | Prefilled composer link and an Android share intent; pass `{ adapter }` to post through a service |
+| X | `xProvider()` | None by default | Prefilled composer link and an Android share intent; counts length as X does (a link is 23); pass `{ adapter }` to post through a service |
 | Reddit, TikTok, LinkedIn, Threads, Instagram, YouTube | `redditHandoff()` … | None | Handoff tickets until their API phases |
 
 Bluesky OAuth needs the app's own hosted client metadata (`clientMetadata`, whose `client_id` is its URL) and a

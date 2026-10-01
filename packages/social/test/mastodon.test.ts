@@ -71,7 +71,7 @@ async function fakeMastodon(options: { oauthMetadata?: boolean } = {}) {
       }
       const token = `oauth-secret-token-${++seq}`;
       tokens.add(token);
-      return reply(200, { access_token: token, token_type: "Bearer", scope: "write:statuses write:media profile" });
+      return reply(200, { access_token: token, token_type: "Bearer", scope: "write:statuses write:media read:statuses profile" });
     }
     if (route === "GET /api/v1/accounts/verify_credentials") {
       return authed ? reply(200, { id: "109", username: "umer", acct: "umer" }) : reply(401, { error: "The access token is invalid" });
@@ -201,7 +201,7 @@ test("OAuth connect registers one app per instance and redirect, uses PKCE, and 
       assert.ok("url" in flow);
       const params = new URL(flow.url).searchParams;
       assert.equal(new URL(flow.url).pathname, "/oauth/authorize");
-      assert.equal(params.get("scope"), "write:statuses write:media profile");
+      assert.equal(params.get("scope"), "write:statuses write:media read:statuses profile");
       assert.equal(params.get("code_challenge_method"), "S256");
       assert.equal(params.get("redirect_uri"), redirectUri);
       const code = fake.authorize(flow.url);
@@ -209,7 +209,7 @@ test("OAuth connect registers one app per instance and redirect, uses PKCE, and 
     }
     assert.equal(fake.count("POST /api/v1/apps"), 1);
     assert.deepEqual(fake.apps[0], { client_name: "Umer's poster", redirect_uris: redirectUri,
-      scopes: "write:statuses write:media profile" });
+      scopes: "write:statuses write:media read:statuses profile" });
     assert.deepEqual(fake.pkce, [true, true]);
     assert.equal(accounts[0].handle, "@umer@social.example");
     assert.notEqual(accounts[0].id, accounts[1].id);
@@ -241,7 +241,7 @@ test("an instance without OAuth metadata gets read:accounts and no PKCE", async 
     const flow = await social.connect("mastodon", { person: "umer", slot: "main", instance: fake.origin, redirectUri });
     assert.ok("url" in flow);
     const params = new URL(flow.url).searchParams;
-    assert.equal(params.get("scope"), "write:statuses write:media read:accounts");
+    assert.equal(params.get("scope"), "write:statuses write:media read:statuses read:accounts");
     assert.equal(params.get("code_challenge"), null);
     const account = await flow.finish(`${redirectUri}?code=${fake.authorize(flow.url)}&state=${params.get("state")}`);
     assert.equal(account.handle, "@umer@social.example");

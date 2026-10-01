@@ -208,7 +208,7 @@ test("WebCryptoKey signs an ES256 JWS that verifies against its public JWK, also
 
 test("authorize, finish, fetchHandler and revoke run the PAR + PKCE + DPoP flow on loopback", async () => {
   const { ctx, sealed } = fakeContext();
-  const oauth = blueskyOAuth(options, ctx);
+  const oauth = blueskyOAuth(options, ctx, "g1");
   const flow = await oauth.authorize(HANDLE);
   const url = new URL(flow.url);
   assert.equal(url.origin + url.pathname, `${server.origin}/oauth/authorize`);
@@ -221,7 +221,7 @@ test("authorize, finish, fetchHandler and revoke run the PAR + PKCE + DPoP flow 
   const result = await flow.finish(await signIn(flow.url));
   assert.deepEqual(result, { did: DID, handle: HANDLE, pds: server.origin });
   assert.equal([...sealed.keys()].filter((k) => k.startsWith('["oauth-state"')).length, 0, "state is consumed");
-  const stored = sealed.get(JSON.stringify(["oauth-session", DID])) ?? "";
+  const stored = sealed.get(JSON.stringify(["oauth-session", "g1", DID])) ?? "";
   assert.match(stored, /at-secret-\d/);
   assert.match(stored, /"dpopKey":\{[^}]*"d":/);
 
@@ -231,20 +231,20 @@ test("authorize, finish, fetchHandler and revoke run the PAR + PKCE + DPoP flow 
   assert.match(server.posts.at(-1)!.auth, /^DPoP at-secret-\d+$/);
 
   // A fresh instance over the same sealed records restores the session (keys rebuilt from JWK).
-  const again = await blueskyOAuth(options, ctx).fetchHandler(DID);
+  const again = await blueskyOAuth(options, ctx, "g1").fetchHandler(DID);
   assert.equal((await again("/xrpc/com.atproto.repo.createRecord", createRecord("again"))).status, 200);
 
   const token = /at-secret-\d+/.exec(stored)![0];
   await oauth.revoke(DID);
   assert.ok(server.revoked.includes(token));
-  assert.equal(sealed.get(JSON.stringify(["oauth-session", DID])), undefined);
+  assert.equal(sealed.get(JSON.stringify(["oauth-session", "g1", DID])), undefined);
   await assert.rejects(oauth.fetchHandler(DID), (e) => e instanceof SocialError && e.code === "signed-out");
-  await assert.rejects(blueskyOAuth(options, ctx).fetchHandler(DID), (e) => e instanceof SocialError && e.code === "signed-out");
+  await assert.rejects(blueskyOAuth(options, ctx, "g1").fetchHandler(DID), (e) => e instanceof SocialError && e.code === "signed-out");
 });
 
 test("cancel drops the pending state record; a bad callback fails without server text", async () => {
   const { ctx, sealed } = fakeContext();
-  const oauth = blueskyOAuth(options, ctx);
+  const oauth = blueskyOAuth(options, ctx, "g1");
   const flow = await oauth.authorize(HANDLE);
   assert.equal(sealed.size, 1);
   flow.cancel();
@@ -260,21 +260,22 @@ test("end to end through Social: connect, draft, approve, post with DPoP; secret
   const provider = defineProvider({
     network: "bluesky", publish: "api", review: "none", needs: [], humanAuthored: [],
     async connect(input, ctx) {
-      const flow = await blueskyOAuth(options, ctx).authorize((input as { handle: string }).handle);
+      const grant = crypto.randomUUID();
+      const flow = await blueskyOAuth(options, ctx, grant).authorize((input as { handle: string }).handle);
       return { url: flow.url, cancel: flow.cancel, finish: async (callback) => {
         const r = await flow.finish(callback);
-        return { handle: r.handle, origin: r.pds, remoteId: r.did, meta: { did: r.did }, records: {} };
+        return { handle: r.handle, origin: r.pds, remoteId: r.did, meta: { did: r.did, grant }, records: {} };
       } };
     },
     check: () => [],
     async send(request, ctx) {
-      const pds = await blueskyOAuth(options, ctx).fetchHandler(String(ctx.account.meta.did));
+      const pds = await blueskyOAuth(options, ctx, String(ctx.account.meta.grant)).fetchHandler(String(ctx.account.meta.did));
       const response = await pds("/xrpc/com.atproto.repo.createRecord", createRecord(request.draft.text));
       if (response.status === 401) throw new SocialError("signed-out");
       if (!response.ok) throw new SocialError("rejected");
       return { remoteId: ((await response.json()) as { uri: string }).uri };
     },
-    async disconnect(ctx) { await blueskyOAuth(options, ctx).revoke(String(ctx.account.meta.did)); },
+    async disconnect(ctx) { await blueskyOAuth(options, ctx, String(ctx.account.meta.grant)).revoke(String(ctx.account.meta.did)); },
   });
   const store = memoryKeystore();
   const queue = memoryQueue();

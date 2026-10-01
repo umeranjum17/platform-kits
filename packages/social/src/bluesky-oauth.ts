@@ -70,8 +70,9 @@ async function guard<T>(code: SocialErrorCode, operation: () => Promise<T>): Pro
   }
 }
 
-export function blueskyOAuth(options: BlueskyOAuthOptions, ctx: ProviderContext): BlueskyOAuth {
-  const sessions = ctx.shared(["oauth-session"]);
+/** `grant` names one sign-in's session store, so accounts on the same DID never share or revoke each other's session. */
+export function blueskyOAuth(options: BlueskyOAuthOptions, ctx: ProviderContext, grant: string): BlueskyOAuth {
+  const sessions = ctx.shared(["oauth-session", grant]);
   const states = ctx.shared(["oauth-state"]);
   const stateStore = sealedStore<InternalStateData>(states);
   // appState -> state key, so a flow can cancel its own pending record.

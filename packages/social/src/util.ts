@@ -33,8 +33,14 @@ export async function recordName(parts: readonly string[]): Promise<string> {
   return `social.${b64url(await sha256(JSON.stringify(["v1", ...parts])))}`;
 }
 
+/** User-perceived characters. Hermes has no Intl.Segmenter; there it falls back to code points, which can overcount emoji. */
+export const segments = (text: string): Iterable<{ segment: string }> =>
+  typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)
+    : Array.from(text, (segment) => ({ segment }));
+
 export const graphemes = (text: string): number => {
   let n = 0;
-  for (const _ of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)) n++;
+  for (const _ of segments(text)) n++;
   return n;
 };

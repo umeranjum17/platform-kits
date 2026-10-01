@@ -3,7 +3,7 @@ import { blueskyOAuth } from "./bluesky-oauth.ts";
 import { SocialError } from "./errors.ts";
 import { defineProvider, type AccountContext, type ProviderContext, type SocialProvider } from "./provider.ts";
 import type { Draft, Json, SocialIssue } from "./types.ts";
-import { graphemes, sha256 } from "./util.ts";
+import { graphemes, randomId, sha256 } from "./util.ts";
 
 export interface BlueskyOAuthOptions {
   /** The app's hosted client metadata (its `client_id` is the metadata URL), or a loopback development client. */
@@ -134,6 +134,7 @@ async function createSession(ctx: ProviderContext, login: AppPassword): Promise<
   throw new SocialError("connect-failed");
 }
 
+type OAuthAccount = { auth?: unknown; did?: unknown; grant?: unknown };
 const asSession = (v: Json | null): Session | null => {
   const s = v as Partial<Session> | null;
   return s && str(s.accessJwt) && str(s.refreshJwt) && str(s.did) && str(s.pds) ? s as Session : null;
@@ -203,10 +204,10 @@ export function blueskyProvider(options: BlueskyOptions = {}): SocialProvider {
       };
       return { call, did: session.did };
     }
-    const account = await ctx.records.get("account") as { auth?: unknown; did?: unknown } | null;
-    if (account?.auth !== "oauth" || !str(account.did)) throw new SocialError("signed-out");
+    const account = await ctx.records.get("account") as OAuthAccount | null;
+    if (account?.auth !== "oauth" || !str(account.did) || !str(account.grant)) throw new SocialError("signed-out");
     if (!options.oauth) throw new SocialError("unsupported");
-    return { call: await blueskyOAuth(options.oauth, ctx).fetchHandler(account.did), did: account.did };
+    return { call: await blueskyOAuth(options.oauth, ctx, account.grant).fetchHandler(account.did), did: account.did };
   }
 
   return defineProvider({
@@ -217,13 +218,14 @@ export function blueskyProvider(options: BlueskyOptions = {}): SocialProvider {
       if (i.oauth === true) {
         if (!options.oauth) throw new SocialError("unsupported");
         if (!str(i.handle)) throw new TypeError("Bluesky OAuth sign-in needs a handle");
-        const flow = await blueskyOAuth(options.oauth, ctx).authorize(i.handle);
+        const grant = randomId();
+        const flow = await blueskyOAuth(options.oauth, ctx, grant).authorize(i.handle);
         return {
           url: flow.url,
           cancel: () => flow.cancel(),
           finish: async (callback) => {
             const { did, handle, pds } = await flow.finish(callback);
-            return { handle, origin: pds, remoteId: did, records: { account: { auth: "oauth", did } } };
+            return { handle, origin: pds, remoteId: did, records: { account: { auth: "oauth", did, grant } } };
           },
         };
       }
@@ -316,8 +318,10 @@ export function blueskyProvider(options: BlueskyOptions = {}): SocialProvider {
         await xrpc(ctx, session.pds, "com.atproto.server.deleteSession", undefined, session.refreshJwt);
         return;
       }
-      const account = await ctx.records.get("account") as { auth?: unknown; did?: unknown } | null;
-      if (options.oauth && account?.auth === "oauth" && str(account.did)) await blueskyOAuth(options.oauth, ctx).revoke(account.did);
+      const account = await ctx.records.get("account") as OAuthAccount | null;
+      if (options.oauth && account?.auth === "oauth" && str(account.did) && str(account.grant)) {
+        await blueskyOAuth(options.oauth, ctx, account.grant).revoke(account.did);
+      }
     },
   });
 }

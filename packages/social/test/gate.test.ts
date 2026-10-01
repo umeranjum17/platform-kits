@@ -151,6 +151,19 @@ test("an unknown outcome is never re-sent blindly; retry reuses the same idempot
   assert.equal(fake.sent[0].retry, true);
 });
 
+test("a retry after an edit is refused: only the approved payload is ever re-sent", async () => {
+  const { social, fake, account, clock } = await setup();
+  const draft = await social.draft({ account: account.id, text: "Approved text", origin: "person" });
+  const approval = await social.approve(draft.id, { revision: 1, by: "umer", at: "now" });
+  fake.throwRaw();
+  await social.post(approval.id);
+  await social.edit(draft.id, { text: "Never approved" }, { revision: 1, origin: "agent" });
+  clock.advance(5 * MIN);
+  await assert.rejects(social.retry(approval.id), refused("approval-void"));
+  assert.equal(fake.sent.length, 0);
+  assert.equal((await social.posts())[0].phase, "unknown");
+});
+
 test("a definite refusal fails without retry, and signed-out marks the account", async () => {
   const { social, fake, account } = await setup();
   const draft = await social.draft({ account: account.id, text: "Refused", origin: "person" });
@@ -162,6 +175,36 @@ test("a definite refusal fails without retry, and signed-out marks the account",
   const second = await social.approve(draft.id, { revision: 1, by: "umer", at: "now" });
   await assert.rejects(social.post(second.id), refused("signed-out"));
   assert.equal(fake.sent.length, 0);
+});
+
+test("a locked keyring fails the send, and the account is ready again once a send gets through", async () => {
+  const { social, fake, account } = await setup();
+  const draft = await social.draft({ account: account.id, text: "Locked", origin: "person" });
+  fake.fail("locked");
+  await social.post((await social.approve(draft.id, { revision: 1, by: "umer", at: "now" })).id);
+  assert.equal((await social.accounts())[0].phase, "locked");
+  const result = await social.post((await social.approve(draft.id, { revision: 1, by: "umer", at: "now" })).id);
+  assert.ok("ok" in result && result.ok);
+  assert.equal((await social.accounts())[0].phase, "ready");
+});
+
+test("malformed text is refused at approval; the same text on two accounts is a warning", async () => {
+  const { social, account } = await setup();
+  const other = await social.connect("fake", { person: "umer", slot: "crewhouse", handle: "umer2" });
+  assert.ok(!("url" in other));
+  const broken = await social.draft({ account: account.id, text: "cut mid emoji \uD83D", origin: "person" });
+  assert.deepEqual((await social.check(broken.id)).map((i) => i.code), ["malformed-text"]);
+  await assert.rejects(social.approve(broken.id, { revision: 1, by: "umer", at: "now" }), refused("check-failed"));
+  await social.draft({ account: account.id, text: "Ship it  today", origin: "person" });
+  const copy = await social.draft({ account: other.id, text: "ship it today", origin: "person" });
+  assert.deepEqual(await social.check(copy.id), [{ code: "near-duplicate", severity: "warning", field: "text" }]);
+});
+
+test("reconnecting an account revokes the grant it replaces", async () => {
+  const { social, fake } = await setup();
+  await social.connect("fake", { person: "umer", slot: "takeone", handle: "umer-new" });
+  assert.deepEqual(fake.revoked, ["umer"]);
+  assert.deepEqual((await social.accounts()).map((a) => a.handle), ["umer-new"]);
 });
 
 test("a crash mid-publish leaves the post unknown after reload", async () => {
@@ -267,6 +310,21 @@ test("X hands off to the prefilled composer and Android share intent by default"
   assert.deepEqual(result.handoff.share?.android, { action: "android.intent.action.SEND", type: "text/plain",
     package: "com.twitter.android", extras: { "android.intent.extra.TEXT": "muxr 1.0 is out https://example.com/muxr" } });
   assert.equal(result.post.phase, "handed-off");
+});
+
+test("X counts a link as 23 and wide characters as 2, and handoff tickets carry the approved media", async () => {
+  const social = new Social({ store: memoryKeystore(), providers: [xProvider()] });
+  const x = await social.connect("x", { person: "umer", slot: "muxr" });
+  assert.ok(!("url" in x));
+  const long = await social.draft({ account: x.id, text: "a".repeat(240), link: `https://example.com/${"p".repeat(60)}`, origin: "person" });
+  assert.deepEqual(await social.check(long.id), []);
+  const wide = await social.draft({ account: x.id, text: "字".repeat(141), origin: "person" });
+  assert.deepEqual((await social.check(wide.id)).map((i) => i.code), ["too-long"]);
+  const png = new Uint8Array([137, 80, 78, 71]);
+  const pic = await social.draft({ account: x.id, text: "pic", media: [{ data: png, type: "image/png", alt: "Umer" }], origin: "person" });
+  const result = await social.post((await social.approve(pic.id, { revision: 1, by: "umer", at: "now" })).id);
+  assert.ok("handoff" in result);
+  assert.deepEqual(result.handoff.assets, pic.media);
 });
 
 test("an X adapter posts only through the approve gate", async () => {

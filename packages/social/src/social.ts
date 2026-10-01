@@ -41,6 +41,9 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const nonEmpty = (value: unknown): value is string => typeof value === "string" && value.trim() !== "";
 
 type StoredAccount = SocialState["accounts"][number];
+const normalize = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
+// encodeURIComponent throws on lone surrogates, which handoff links and most servers reject.
+const wellFormed = (text: string) => { try { encodeURIComponent(text); return true; } catch { return false; } };
 const publicAccount = ({ records: _, ...account }: StoredAccount): SocialAccount => clone(account);
 
 /** In-memory queue for tests and short-lived hosts. */
@@ -189,7 +192,7 @@ export class Social {
     const draft = state.drafts.find((d) => d.id === draftId);
     const account = draft && state.accounts.find((a) => a.id === draft.account);
     if (!draft || !account) throw new SocialError("not-found");
-    return this.#issues(draft, account);
+    return this.#issues(draft, account, state);
   }
 
   // ---- the gate ----
@@ -211,7 +214,7 @@ export class Social {
     if (draft.revision !== options.revision) throw new SocialError("draft-stale");
     const now = this.#now();
     if (options.at !== "now" && options.at <= now) throw new RangeError("a scheduled approval must be in the future");
-    const issues = this.#issues(draft, account);
+    const issues = this.#issues(draft, account, state);
     if (issues.some((i) => i.severity === "error")) throw new SocialError("check-failed", { issues });
     const spec = this.#spec(account.network);
     const unattested = spec.humanAuthored.some((f) => nonEmpty(draft[f]) && !draft.personWritten.includes(f));
@@ -331,7 +334,7 @@ export class Social {
       } else {
         if (existing && existing.phase !== "scheduled") {
           throw new SocialError(existing.phase === "cancelled" ? "approval-void"
-            : existing.code === "stale-approval" ? "stale-approval" : "approval-used");
+            : existing.code === "stale-approval" || existing.code === "check-failed" ? existing.code : "approval-used");
         }
         if (approval.state === "used") throw new SocialError("approval-used");
         if (approval.state === "void") throw new SocialError("approval-void");
@@ -346,14 +349,20 @@ export class Social {
         });
         throw new SocialError(code);
       };
+      const approved = !!draft && !!account && draft.revision === approval.revision &&
+        (await payloadDigest(draft, account, approval.at)) === approval.digest;
+      // A retry re-sends exactly what was approved: an edit after the first attempt leaves the post unknown.
+      if (retry && !approved) throw new SocialError("approval-void");
       if (!retry) {
         if (approval.at !== null && now < approval.at) throw new SocialError("not-due");
         if (now > approval.expiresAt) return refuse("stale-approval");
-        if (!draft || !account || draft.revision !== approval.revision) return refuse("approval-void");
-        if ((await payloadDigest(draft, account, approval.at)) !== approval.digest) return refuse("approval-void");
+        if (!approved) return refuse("approval-void");
       }
       if (!draft || !account) throw new SocialError("not-found");
-      if (account.phase !== "ready") throw new SocialError(account.phase === "locked" ? "locked" : "signed-out");
+      // Fresh checks at send time: instance limits may have changed since approval.
+      if (!retry && this.#issues(draft, account, state).some((i) => i.severity === "error")) return refuse("check-failed");
+      // A locked keyring may be open again by now, so only a signed-out account is refused before trying.
+      if (account.phase === "signed-out") throw new SocialError("signed-out");
       const media = [];
       for (const ref of draft.media) {
         const data = await this.#queue.getMedia(ref.sha256).catch(() => null);
@@ -379,24 +388,27 @@ export class Social {
     const { spec, draft, account, media, post } = gate;
     let update: Partial<SocialPost>;
     let result: PostResult;
-    if (spec.publish === "handoff" && spec.handoff) {
-      const ticket = spec.handoff(draft, publicAccount(account));
-      update = { phase: "handed-off", ticket };
-      result = { handoff: ticket, post: { ...post, ...update } };
-    } else {
-      try {
+    const handoff = spec.publish === "handoff" && !!spec.handoff;
+    try {
+      if (handoff) {
+        const ticket = (spec.handoff as NonNullable<ProviderSpec["handoff"]>)(draft, publicAccount(account));
+        update = { phase: "handed-off", ticket };
+        result = { handoff: ticket, post: { ...post, ...update } };
+      } else {
         if (!spec.send) throw new SocialError("unsupported");
         const sent = await spec.send({ draft, media, key: approvalId, attempt: post.attempt ?? {},
           startedAt: post.startedAt ?? this.#now(), retry }, this.#accountContext(spec, account));
         update = { phase: "posted", remoteId: sent.remoteId, ...(sent.url ? { url: sent.url } : {}) };
         result = { ok: true, post: { ...post, ...update }, remoteId: sent.remoteId, ...(sent.url ? { url: sent.url } : {}) };
-      } catch (error) {
-        const code: SocialErrorCode = error instanceof SocialError ? error.code : "network";
-        update = { phase: notPosted.has(code) ? "failed" : "unknown", code };
-        const until = error instanceof SocialError ? error.until : undefined;
-        result = { ok: false, post: { ...post, ...update }, code, ...(until !== undefined ? { until } : {}) };
-        if (code === "signed-out" || code === "locked") await this.#setAccountPhase(account.id, code);
+        if (account.phase === "locked") await this.#setAccountPhase(account.id, "ready");
       }
+    } catch (error) {
+      // Building a handoff ticket sends nothing, so its failures are never unknown.
+      const code: SocialErrorCode = error instanceof SocialError ? error.code : handoff ? "rejected" : "network";
+      update = { phase: notPosted.has(code) ? "failed" : "unknown", code };
+      const until = error instanceof SocialError ? error.until : undefined;
+      result = { ok: false, post: { ...post, ...update }, code, ...(until !== undefined ? { until } : {}) };
+      if (code === "signed-out" || code === "locked") await this.#setAccountPhase(account.id, code);
     }
     const final = await this.#mutate((state, emit) => {
       const p = state.posts.find((x) => x.id === approvalId) as SocialPost;
@@ -408,10 +420,18 @@ export class Social {
     return result;
   }
 
-  #issues(draft: Draft, account: StoredAccount): SocialIssue[] {
+  #issues(draft: Draft, account: StoredAccount, state: SocialState): SocialIssue[] {
     const issues: SocialIssue[] = [];
     if (draft.text.trim() === "" && draft.media.length === 0 && draft.title.trim() === "") {
       issues.push({ code: "empty", severity: "error", field: "text" });
+    }
+    for (const field of ["text", "title", "link"] as const) {
+      if (!wellFormed(draft[field])) issues.push({ code: "malformed-text", severity: "error", field });
+    }
+    // Networks such as X suspend accounts that post the same text; warn when another account has it drafted.
+    const text = normalize(draft.text);
+    if (text !== "" && state.drafts.some((d) => d.network === draft.network && d.account !== draft.account && normalize(d.text) === text)) {
+      issues.push({ code: "near-duplicate", severity: "warning", field: "text" });
     }
     const spec = this.#spec(account.network);
     for (const field of spec.humanAuthored) {
@@ -426,11 +446,12 @@ export class Social {
     approval.state = "void";
     emit({ type: "approval", approval });
     const post = state.posts.find((p) => p.id === approval.id);
-    if (post && (post.phase === "scheduled" || code === "stale-approval")) {
-      Object.assign(post, code === "stale-approval" ? { phase: "failed", code } : { phase: "cancelled" },
+    const fails = code === "stale-approval" || code === "check-failed";
+    if (post && (post.phase === "scheduled" || fails)) {
+      Object.assign(post, fails ? { phase: "failed", code } : { phase: "cancelled" },
         code === "approval-void" ? { code } : {}, { updatedAt: this.#now() });
       emit({ type: "post", post });
-    } else if (!post && code === "stale-approval") {
+    } else if (!post && fails) {
       const draft = state.drafts.find((d) => d.id === approval.draft) as Draft;
       const failed: SocialPost = { id: approval.id, draft: draft.id, account: draft.account, network: draft.network,
         phase: "failed", at: approval.at, code, updatedAt: this.#now() };
@@ -441,12 +462,14 @@ export class Social {
 
   async #commitAccount(spec: ProviderSpec, input: ConnectInput, connected: Connected): Promise<SocialAccount> {
     const id = `${spec.network}:${b64url(await sha256(JSON.stringify([spec.network, connected.origin, input.person, input.slot]))).slice(0, 22)}`;
+    const previous = (await this.#load()).accounts.find((a) => a.id === id);
+    // Reconnecting replaces the account's grant: revoke the old one (best effort) before its records are overwritten.
+    if (previous) await spec.disconnect?.(this.#accountContext(spec, previous)).catch(() => undefined);
     const names = Object.keys(connected.records);
     for (const name of names) {
       const value = JSON.stringify(connected.records[name]);
       await this.#keystore(async () => this.#store.set(await this.#recordName(id, name), value));
     }
-    const previous = (await this.#load()).accounts.find((a) => a.id === id);
     for (const name of previous?.records ?? []) {
       if (!names.includes(name)) await this.#keystore(async () => this.#store.delete(await this.#recordName(id, name)));
     }
@@ -459,7 +482,7 @@ export class Social {
     });
   }
 
-  async #setAccountPhase(accountId: string, phase: "signed-out" | "locked"): Promise<void> {
+  async #setAccountPhase(accountId: string, phase: SocialAccount["phase"]): Promise<void> {
     await this.#mutate((state, emit) => {
       const account = state.accounts.find((a) => a.id === accountId);
       if (!account || account.phase === phase) return;

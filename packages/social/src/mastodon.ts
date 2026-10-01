@@ -145,7 +145,7 @@ export function mastodonProvider(options: MastodonOptions = {}): SocialProvider 
       let app = await readApp(records);
       if (!app) {
         // Registration is throttled per IP, so one app serves every account on this instance and redirect.
-        const scope = `write:statuses write:media ${Array.isArray(scopes) && scopes.includes("profile") ? "profile" : "read:accounts"}`;
+        const scope = `write:statuses write:media read:statuses ${Array.isArray(scopes) && scopes.includes("profile") ? "profile" : "read:accounts"}`;
         const made = await json(await call(ctx.fetch, `${origin}/api/v1/apps`, {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ client_name: options.clientName ?? "Social kit", redirect_uris: redirectUri, scopes: scope,

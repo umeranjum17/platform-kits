@@ -9,5 +9,7 @@
   tickets, an X provider that hands off to the prefilled composer or Android share intent by default with an
   adapter seam for posting services, and typed handoff stubs for Reddit, TikTok, LinkedIn, Threads, Instagram and
   YouTube.
+- Add `@platform-kits/social/node`: `fileQueue({ stateDir })`, which keeps drafts, approvals, posts and media in
+  owner-only files under a single-writer lock, and `runScheduler()`, which posts due approvals on an interval.
 - SECURITY: Tokens, app passwords and OAuth sessions live only in the host's sealed Keystore under hashed names;
   there is no plaintext fallback, and errors carry fixed messages without tokens or server bodies.

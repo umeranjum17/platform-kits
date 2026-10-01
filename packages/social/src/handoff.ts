@@ -1,6 +1,6 @@
 import { defineProvider, type ProviderReview, type ProviderSpec, type SocialProvider } from "./provider.ts";
 import type { Draft, HandoffTicket, SocialAccount, SocialIssue, SocialNetwork } from "./types.ts";
-import { graphemes } from "./util.ts";
+import { graphemes, segments } from "./util.ts";
 
 /** Connect input for a handoff network: no secret is stored; `handle` is the public username, if any. */
 export interface HandoffConnect { person: string; slot: string; handle?: string }
@@ -29,7 +29,7 @@ function handoff(preset: Preset): SocialProvider {
     check: (draft) => preset.check?.(draft) ?? [],
     handoff: (draft: Draft, _account: SocialAccount): HandoffTicket => ({
       network: preset.network, deepLink: preset.link(draft),
-      copyBlocks: preset.blocks(draft).filter((b) => b.text !== ""),
+      copyBlocks: preset.blocks(draft).filter((b) => b.text !== ""), assets: draft.media,
       ...(preset.share ? { share: preset.share(draft) } : {}),
       checklist: preset.checklist, doNot: preset.doNot,
     }),
@@ -128,6 +128,23 @@ export function tiktokHandoff(): SocialProvider {
 const xText = (d: Draft) => (d.link ? `${d.text} ${d.link}` : d.text);
 
 /**
+ * X's weighted length: a URL counts 23, Latin and common punctuation 1, everything else (CJK, emoji) 2.
+ * ponytail: http(s) URLs only; X also shortens bare domains, so a draft with one may count longer here than on X.
+ */
+export function xLength(text: string): number {
+  let length = 0;
+  for (const part of text.split(/(https?:\/\/\S+)/)) {
+    if (/^https?:\/\//.test(part)) { length += 23; continue; }
+    for (const { segment } of segments(part)) {
+      const cp = segment.codePointAt(0) as number;
+      length += cp <= 0x10ff || (cp >= 0x2000 && cp <= 0x200d) || (cp >= 0x2010 && cp <= 0x201f) ||
+        (cp >= 0x2032 && cp <= 0x2037) ? 1 : 2;
+    }
+  }
+  return length;
+}
+
+/**
  * A later way to post to X on the person's behalf, such as a third-party aggregator. It plugs in behind the same
  * approve gate: the kit still calls `send` only from `Social.post(approval)`. No adapter ships with the kit.
  */
@@ -141,7 +158,7 @@ export type XAdapter = Pick<ProviderSpec, "connect" | "send"> & Partial<Pick<Pro
  * Pass an `adapter` to post through a service instead.
  */
 export function xProvider(options: { adapter?: XAdapter } = {}): SocialProvider {
-  const check = (d: Draft): SocialIssue[] => tooLong("text", xText(d), 280);
+  const check = (d: Draft): SocialIssue[] => xLength(xText(d)) > 280 ? [{ code: "too-long", severity: "error", field: "text", limit: 280 }] : [];
   if (options.adapter) {
     const { review = "none", ...adapter } = options.adapter;
     return defineProvider({ network: "x", publish: "api", review, needs: [], humanAuthored: [], check, ...adapter });

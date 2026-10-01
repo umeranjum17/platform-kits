@@ -179,7 +179,11 @@ $('start').onclick = async () => {
   const res = await fetch('start', { method: 'POST', body: JSON.stringify({ screen: chosen.id }) });
   if (!res.ok) fail(await res.text());
 };
-$('stop').onclick = () => { $('stop').disabled = true; fetch('stop', { method: 'POST' }); };
+$('stop').onclick = () => {
+  clearInterval(ticker); $('stop').disabled = true; $('pulse').hidden = true;
+  $('recState').textContent = 'Stopping'; $('stopLabel').textContent = 'Saving';
+  fetch('stop', { method: 'POST' });
+};
 $('again').onclick = $('retry').onclick = () => { chosen = null; $('start').disabled = true; frame('pick'); show('pick'); loadScreens(); };
 
 function fail(message) { clearInterval(ticker); $('failedWhy').textContent = message; frame('failed'); show('failed'); }

@@ -5,8 +5,8 @@ Pod::Spec.new do |s|
   s.description = s.summary
   s.license = { :type => 'Apache-2.0', :file => '../LICENSE' }
   s.author = 'BYOKit'
-  s.homepage = 'https://github.com/umeranjum17/byokit'
-  s.source = { :git => 'https://github.com/umeranjum17/byokit.git' }
+  s.homepage = 'https://github.com/umeranjum17/platform-kits'
+  s.source = { :git => 'https://github.com/umeranjum17/platform-kits.git' }
   s.platform = :ios, '15.1'
   s.swift_version = '5.9'
   s.static_framework = true

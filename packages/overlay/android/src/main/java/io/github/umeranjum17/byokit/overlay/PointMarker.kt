@@ -25,8 +25,17 @@ class PointRecord : Record {
   @Field val width: Double = 0.0
   @Field val height: Double = 0.0
   @Field val label: String = ""
+  @Field val avoid: List<AvoidRecord> = emptyList()
   @Field val space: ScreenSpaceRecord? = null
   @Field val ms: Double = 2500.0
+}
+
+/** A box the callout must not cover, such as nearby text: its top-left corner and size in full-display pixels. */
+class AvoidRecord : Record {
+  @Field val left: Double = 0.0
+  @Field val top: Double = 0.0
+  @Field val width: Double = 0.0
+  @Field val height: Double = 0.0
 }
 
 /** A rectangle in screen pixels. */
@@ -58,10 +67,12 @@ object PointLayout {
 
   /**
    * [target] is the target's bounds (zero size for a bare point), [screen] the display, [safe] the part of it clear of
-   * system bars and cutouts, [callout] the callout's size. The callout goes below the ring when it fits, otherwise above,
-   * otherwise on the roomier side; horizontally it centres on the target, kept inside [safe].
+   * system bars and cutouts, [callout] the callout's size, [avoid] text or controls the callout must not cover.
+   * In order, the first spot inside [safe] clear of [avoid] wins: below the ring centred on the target, above it centred,
+   * then below and above nudged sideways (the target's centre stays on the callout's straight edge, under the arrow).
+   * With no clear spot it takes the one covering the least of [avoid]; with no room above or below, the roomier side.
    */
-  fun plan(target: Box, screen: Size, safe: Box, callout: Size, density: Float): PointPlan {
+  fun plan(target: Box, screen: Size, safe: Box, callout: Size, density: Float, avoid: List<Box> = emptyList()): PointPlan {
     val min = MIN_DP * density / 2
     val cx = (target.l + target.r) / 2; val cy = (target.t + target.b) / 2
     val out = OUTSET_DP * density
@@ -76,16 +87,30 @@ object PointLayout {
     val corner = if (target.w == 0f && target.h == 0f) half else minOf(half, CORNER_DP * density)
     val gap = GAP_DP * density; val margin = MARGIN_DP * density
     val top = safe.t + margin; val bottom = safe.b - margin
-    val roomBelow = bottom - (ring.b + gap); val roomAbove = (ring.t - gap) - top
-    val below = roomBelow >= callout.h || (roomAbove < callout.h && roomBelow >= roomAbove)
-    val y = if (below) (ring.b + gap).coerceAtMost(bottom - callout.h) else (ring.t - gap - callout.h).coerceAtLeast(top)
     val left = safe.l + margin; val right = safe.r - margin
-    val x = if (right - left <= callout.w) left else (cx - callout.w / 2).coerceIn(left, right - callout.w)
-    val box = Box(x, y, x + callout.w, y + callout.h)
     val end = callout.h / 2f
+    val centred = if (right - left <= callout.w) left else (cx - callout.w / 2).coerceIn(left, right - callout.w)
+    val belowY = ring.b + gap; val aboveY = ring.t - gap - callout.h
+    val ys = listOfNotNull(belowY.takeIf { it + callout.h <= bottom }, aboveY.takeIf { it >= top })
+    // Sideways nudges in 8 dp steps, nearest first, only where the target's centre stays under the arrow.
+    val lo = maxOf(left, cx - callout.w + end); val hi = minOf(right - callout.w, cx - end)
+    val step = 8 * density
+    val nudges = if (hi < lo) emptyList() else
+      generateSequence(step) { it + step }.takeWhile { it <= hi - lo }.flatMap { sequenceOf(centred - it, centred + it) }.filter { it in lo..hi }.toList()
+    fun at(x: Float, y: Float) = Box(x, y, x + callout.w, y + callout.h)
+    fun covered(b: Box) = avoid.sumOf { overlap(it, b).toDouble() }
+    val spots = ys.map { at(centred, it) } + ys.flatMap { y -> nudges.map { at(it, y) } }
+    val box = spots.firstOrNull { covered(it) == 0.0 } ?: spots.minByOrNull(::covered) ?: run {
+      val below = bottom - belowY >= aboveY + callout.h - top
+      at(centred, if (below) belowY.coerceAtMost(bottom - callout.h) else aboveY.coerceAtLeast(top))
+    }
+    val below = box.t >= cy
     val arrowX = if (box.w <= 2 * end) (box.l + box.r) / 2 else cx.coerceIn(box.l + end, box.r - end)
     return PointPlan(ring, corner, box, below, arrowX)
   }
+
+  private fun overlap(a: Box, b: Box) =
+    maxOf(0f, minOf(a.r, b.r) - maxOf(a.l, b.l)) * maxOf(0f, minOf(a.b, b.b) - maxOf(a.t, b.t))
 }
 
 /** The marker is its own window, so dismissing it never removes the bubble. One marker at a time. */
@@ -105,6 +130,7 @@ internal class PointMarker(private val context: Context, private val type: Int) 
   fun show(o: PointRecord): String {
     require(o.x.isFinite() && o.y.isFinite() && o.label.isNotBlank() && o.ms.isFinite() && o.ms in 1.0..60000.0)
     require(o.width.isFinite() && o.height.isFinite() && o.width >= 0 && o.height >= 0)
+    require(o.avoid.size <= 64 && o.avoid.all { listOf(it.left, it.top, it.width, it.height).all(Double::isFinite) && it.width >= 0 && it.height >= 0 })
     val s = ScreenSpace.current(context)
     if (o.space?.let { !s.matches(it) } == true) return "display-changed"
     require(o.x >= 0 && o.y >= 0 && o.x < s.width && o.y < s.height)
@@ -116,7 +142,8 @@ internal class PointMarker(private val context: Context, private val type: Int) 
     val callout = Size(ceil(ink.measureText(text) + 2 * PAD_DP * d).toInt(), (CALLOUT_DP * d).roundToInt())
     val (w, h) = o.width.toFloat() / 2 to o.height.toFloat() / 2
     val target = Box(o.x.toFloat() - w, o.y.toFloat() - h, o.x.toFloat() + w, o.y.toFloat() + h)
-    val plan = PointLayout.plan(target, Size(s.width, s.height), safe(s), callout, d)
+    val avoid = o.avoid.map { Box(it.left.toFloat(), it.top.toFloat(), (it.left + it.width).toFloat(), (it.top + it.height).toFloat()) }
+    val plan = PointLayout.plan(target, Size(s.width, s.height), safe(s), callout, d, avoid)
     // The window spans the ring, the arrow and the callout; the view draws in window-local pixels.
     val pad = HALO_DP * d
     val l = floor(minOf(plan.ring.l, plan.callout.l) - pad).toInt(); val t = floor(minOf(plan.ring.t, plan.callout.t) - pad).toInt()

@@ -17,8 +17,9 @@ class PointLayoutTest {
   private fun inside(a: Box, b: Box) = a.l >= b.l && a.t >= b.t && a.r <= b.r && a.b <= b.b
   private fun encloses(ring: Box, t: Box) = ring.l < t.l && ring.t < t.t && ring.r > t.r && ring.b > t.b
 
-  private fun check(t: Box): PointPlan {
-    val p = PointLayout.plan(t, screen, safe, callout, d)
+  private fun check(t: Box, avoid: List<Box> = emptyList()): PointPlan {
+    val p = PointLayout.plan(t, screen, safe, callout, d, avoid)
+    for (a in avoid) assertFalse("callout covers text", overlaps(p.callout, a))
     assertFalse("callout covers the target", overlaps(p.callout, t))
     assertFalse("callout covers the ring", overlaps(p.callout, p.ring))
     assertTrue("callout leaves the safe area", inside(p.callout, safe))
@@ -74,6 +75,35 @@ class PointLayoutTest {
     val p = check(target(540f, 1200f, 500f, 160f))
     assertEquals(PointLayout.CORNER_DP * d, p.corner, 0.01f)
     assertTrue(encloses(p.ring, target(540f, 1200f, 500f, 160f)))
+  }
+
+  @Test fun textBelowTheTargetFlipsTheCalloutAbove() {
+    val t = target(540f, 1200f, 900f, 160f)
+    // A sentence right under the button, as wide as the card.
+    val sentence = Box(60f, 1300f, 1020f, 1360f)
+    val p = check(t, listOf(sentence))
+    assertFalse(p.below)
+    assertEquals(540f, p.arrowX, 0.01f)
+  }
+
+  @Test fun textUnderTheCentredSpotNudgesTheCalloutSideways() {
+    val t = target(540f, 1200f, 600f, 160f)
+    // A short word below and right of centre, and a caption across the whole width above.
+    val word = Box(620f, 1300f, 800f, 1360f)
+    val caption = Box(0f, 1000f, 1080f, 1100f)
+    val p = check(t, listOf(word, caption))
+    assertTrue(p.below)
+    assertTrue(p.callout.r <= 620f)
+    assertEquals(540f, p.arrowX, 0.01f)
+  }
+
+  @Test fun withNoClearSpotTheCalloutCoversTheLeastText() {
+    val t = target(540f, 1200f, 600f, 160f)
+    val block = Box(0f, 1280f, 1080f, 1500f)
+    val line = Box(0f, 1000f, 1080f, 1012f)
+    val p = PointLayout.plan(t, screen, safe, callout, d, listOf(block, line))
+    assertFalse(p.below)
+    assertFalse(overlaps(p.callout, t))
   }
 
   @Test fun aTargetFillingTheScreenUsesTheRoomierSideAndStaysInTheSafeArea() {

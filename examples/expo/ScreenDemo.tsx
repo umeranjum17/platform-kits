@@ -17,6 +17,9 @@ const STEPS = [
 /** Account-free native proof: opt in at build time with EXPO_PUBLIC_SCREEN_DEMO=1. */
 export function ScreenDemo() {
   const target = useRef<View>(null);
+  // Text near the demo button that the label must keep clear of.
+  const near = useRef<(View | null)[]>([]);
+  const keep = (i: number) => (v: View | null) => { near.current[i] = v; };
   const [frame, setFrame] = useState<Frame | null>(null);
   const [message, setMessage] = useState('Take a picture, then show Umer where to tap.');
   const [point, setPoint] = useState('');
@@ -35,7 +38,7 @@ export function ScreenDemo() {
     if (state === 'needs-permission') await overlay.openPermission();
     else setPoint(state === 'on' ? 'Guide ready.' : 'This phone cannot show a guide.');
   };
-  const mark = (ms: number) => target.current && frame && pointAt(target.current, frame, 'Umer, tap here', ms).then((result) =>
+  const mark = (ms: number) => target.current && frame && pointAt(target.current, frame, 'Umer, tap here', ms, near.current).then((result) =>
     setPoint(result === 'shown' ? 'Follow the ring.' : result === 'display-changed' ? 'Take a new picture after turning the phone.' : 'Start the guide first.'));
   if (tour && frame) return <Tour frame={frame} onClose={() => { setTour(false); overlay.dismissPoint(); }} />;
   return <View style={s.screen}>
@@ -52,13 +55,13 @@ export function ScreenDemo() {
     </View>}
     <Pressable testID="screenGuide" style={s.secondary} onPress={start}><Text style={s.secondaryText}>Start the guide</Text></Pressable>
     <View style={s.targetArea}>
-      <Text style={s.caption}>A demo button beneath the marker</Text>
+      <Text ref={keep(0)} style={s.caption}>A demo button beneath the marker</Text>
+      <Text ref={keep(1)} testID="screenTaps" style={s.detail}>{taps ? `Umer tapped through ${taps} time${taps === 1 ? '' : 's'}.` : 'The ring will let your tap reach this button.'}</Text>
       <View ref={target} collapsable={false}>
         <Pressable testID="screenTarget" style={s.target} onPress={() => setTaps((n) => n + 1)}><Text style={s.targetText}>Umer’s next step</Text></Pressable>
       </View>
-      <Text testID="screenTaps" style={s.detail}>{taps ? `Umer tapped through ${taps} time${taps === 1 ? '' : 's'}.` : 'The ring will let your tap reach this button.'}</Text>
     </View>
-    <View style={s.row}>
+    <View ref={keep(2)} collapsable={false} style={s.row}>
       <Pressable testID="screenPoint" disabled={!frame} style={s.smallButton} onPress={() => mark(15000)}><Text style={s.secondaryText}>Point here</Text></Pressable>
       <Pressable testID="screenPointShort" disabled={!frame} style={s.smallButton} onPress={() => mark(1000)}><Text style={s.secondaryText}>Brief ring</Text></Pressable>
       <Pressable testID="screenDismiss" style={s.smallButton} onPress={async () => { await overlay.dismissPoint(); setPoint('Ring dismissed.'); }}><Text style={s.secondaryText}>Dismiss</Text></Pressable>
@@ -70,22 +73,30 @@ export function ScreenDemo() {
   </View>;
 }
 
-/** Points at the view's full bounds, so the ring goes around it and the label stays clear of it. */
-function pointAt(view: View, frame: Frame, label: string, ms: number) {
-  return new Promise<Awaited<ReturnType<typeof overlay.pointHere>>>((done) => view.measureInWindow((x, y, width, height) => {
-    const d = frame.space.density;
-    done(overlay.pointHere({ x: (x + width / 2) * d, y: (y + height / 2) * d, width: width * d, height: height * d, label, space: frame.space, ms }));
-  }));
+type Rect = { x: number; y: number; width: number; height: number };
+const measure = (view: View) => new Promise<Rect>((done) => view.measureInWindow((x, y, width, height) => done({ x, y, width, height })));
+
+/** Points at the view's full bounds, so the ring goes around it; the label stays clear of it and of the [avoid] views. */
+async function pointAt(view: View, frame: Frame, label: string, ms: number, avoid: (View | null)[] = []) {
+  const d = frame.space.density;
+  const t = await measure(view);
+  const boxes = await Promise.all(avoid.filter((v): v is View => !!v && v !== view).map(measure));
+  return overlay.pointHere({
+    x: (t.x + t.width / 2) * d, y: (t.y + t.height / 2) * d, width: t.width * d, height: t.height * d, label, space: frame.space, ms,
+    avoid: boxes.map((b) => ({ left: b.x * d, top: b.y * d, width: b.width * d, height: b.height * d })),
+  });
 }
 
 /** Five targets at the screen's top, edges, middle and bottom; each tap moves the ring to the next one. */
 function Tour({ frame, onClose }: { frame: Frame; onClose: () => void }) {
   const refs = useRef<(View | null)[]>([]);
+  // The step text and the buttons around the targets, which the label must keep clear of.
+  const near = useRef<(View | null)[]>([]);
   const [step, setStep] = useState(-1);
   const go = (n: number) => {
     setStep(n);
     const view = refs.current[n];
-    if (view) pointAt(view, frame, STEPS[n].hint, 60000);
+    if (view) pointAt(view, frame, STEPS[n].hint, 60000, [...refs.current, ...near.current]);
     else overlay.dismissPoint();
   };
   const top = (Bars.currentHeight ?? 24) + 12;
@@ -99,9 +110,10 @@ function Tour({ frame, onClose }: { frame: Frame; onClose: () => void }) {
     {target(0, { top, left: 24, right: 24 })}
     {target(1, { top: '22%', left: 0 })}
     <View style={s.middle}>
-      <Text testID="tourStep" style={[s.detail, s.centre]}>{step < 0 ? 'Five places on one screen. The ring visits each in turn.' : step < STEPS.length ? `Step ${step + 1} of ${STEPS.length}. Follow the ring.` : 'All done. Umer found every step.'}</Text>
       {target(2, { position: 'relative', alignSelf: 'center' })}
-      <View style={[s.row, s.below]}>
+      {/* Right under the middle target: the label flips above rather than cover it. */}
+      <Text ref={(v) => { near.current[0] = v; }} testID="tourStep" style={[s.detail, s.centre]}>{step < 0 ? 'Five places on one screen. The ring visits each in turn.' : step < STEPS.length ? `Step ${step + 1} of ${STEPS.length}. Follow the ring.` : 'All done. Umer found every step.'}</Text>
+      <View ref={(v) => { near.current[1] = v; }} collapsable={false} style={s.row}>
         <Pressable testID="tourStart" style={s.smallButton} onPress={() => go(0)}><Text style={s.secondaryText}>{step < 0 ? 'Start the tour' : 'Start again'}</Text></Pressable>
         <Pressable testID="tourClose" style={s.smallButton} onPress={onClose}><Text style={s.secondaryText}>Back to the guide</Text></Pressable>
       </View>
@@ -123,7 +135,7 @@ const s = StyleSheet.create({
   picture: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   thumb: { height: 72, borderRadius: 6, borderWidth: 1, borderColor: '#c9d4c2' },
   pictureText: { flex: 1, fontSize: 13, lineHeight: 18 },
-  targetArea: { marginVertical: 12, gap: 16, padding: 20, borderRadius: 16, backgroundColor: '#fff' },
+  targetArea: { marginVertical: 12, gap: 12, padding: 20, paddingBottom: 64, borderRadius: 16, backgroundColor: '#fff' },
   caption: { fontSize: 12, color: '#52695c' },
   target: { padding: 22, borderRadius: 12, backgroundColor: '#e0e8d9', alignItems: 'center' },
   targetText: { fontSize: 17, fontWeight: '700', color: '#163a2d' },
@@ -132,7 +144,6 @@ const s = StyleSheet.create({
   board: { flex: 1, backgroundColor: '#f4f6ef' },
   middle: { position: 'absolute', top: '36%', left: 24, right: 24, gap: 16 },
   centre: { textAlign: 'center' },
-  below: { marginTop: 48 },
   spot: { position: 'absolute' },
   tourButton: { paddingVertical: 18, paddingHorizontal: 22, borderRadius: 12, backgroundColor: '#e0e8d9', alignItems: 'center' },
   tourOn: { backgroundColor: '#cfe0c6' },

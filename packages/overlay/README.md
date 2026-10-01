@@ -176,16 +176,19 @@ Android 14+ requests the entire default display; an OEM override to app-only cap
 instead of returning a picture with misleading coordinates. Protected content can be blank, as enforced by Android.
 If coordinates came from a resized preview, convert them back to the original image pixels first.
 
-`pointHere({ x, y, width?, height?, label, space?, ms? })` points at the target centred on those full-display pixels.
+`pointHere({ x, y, width?, height?, label, avoid?, space?, ms? })` points at the target centred on those full-display pixels.
 With the target's `width` and `height` the ring goes around the whole target, outside its edges, so it never covers the
 target's own label; without them the ring is a 48 dp circle around the point. The label sits in a callout below the
 target, or above it when there is no room below, centred on the target and kept clear of the status bar, navigation
-bar, cutout and screen edges; its arrow points at the target. A label too long for the screen is shortened on screen,
+bar, cutout and screen edges; its arrow points at the target. Pass `avoid` (up to 64 `{ left, top, width, height }`
+boxes in the same pixels) for nearby text and controls: the callout then takes the first clear spot of below, above,
+or either nudged sideways while still pointing at the target, and covers the least of them when nothing is clear. The
+overlay cannot see another app's text, so the caller supplies these boxes from what it knows about the screen. A label too long for the screen is shortened on screen,
 and TalkBack receives it in full. A ring at a screen edge stays fully visible. It needs an already started overlay
 (either host). It replaces the previous marker, defaults to 2500 ms (allowed range 1–60000), and returns `shown`,
 `not-running`, `needs-permission`, `display-changed`, or `unsupported`. Pass `frame.space` to reject stale geometry;
 without it the current display is used. Coordinates must be finite and inside the display, sizes finite and
-non-negative, with a non-empty label. A marker never takes focus or accepts touches; its window opacity stays within
+non-negative, at most 64 `avoid` boxes with finite edges and non-negative sizes, with a non-empty label. A marker never takes focus or accepts touches; its window opacity stays within
 Android's pass-through limit (0.8). The bubble keeps its own existing touch behavior. `dismissPoint()`, `stop()`,
 native teardown and host loss remove the marker. Auto-dismiss uses elapsed time, with no animation.
 

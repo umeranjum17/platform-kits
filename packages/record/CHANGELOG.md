@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Move to `@platform-kits/record` with the same public API and native identifiers.
+- FIX: the bundled recorder captures at 30 fps (was 15) into a lossless take, so `make()` is the only lossy pass and
+  text stays sharp. Takes use more disk space while they exist.
 
 ## 0.2.0 (2026-09-30)
 

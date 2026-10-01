@@ -87,9 +87,12 @@ async function record(flags: Map<string, string[]>, tools: RecorderTools, output
   try {
     mkdirSync(root, { recursive: true, mode: 0o700 });
     take = mkdtempSync(join(root, 'take-'));
-    media = spawn(tools.ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'x11grab', '-framerate', '15',
-      '-i', source!.slice(4), '-t', String(seconds), '-an', '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2',
-      '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-progress', 'pipe:1', join(take, 'raw.mp4')],
+    // 30 fps constant rate into a lossless master: make() is the only lossy pass, so text stays sharp.
+    // The queue lets grabbing run ahead while the encoder catches up on a busy machine.
+    media = spawn(tools.ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-thread_queue_size', '64', '-f', 'x11grab',
+      '-framerate', '30', '-i', source!.slice(4), '-t', String(seconds), '-an', '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2',
+      '-fps_mode', 'cfr', '-r', '30', '-c:v', 'libx264', '-preset', 'ultrafast', '-qp', '0', '-pix_fmt', 'yuv420p',
+      '-progress', 'pipe:1', join(take, 'raw.mp4')],
     { env: tools.env, stdio: ['pipe', 'pipe', 'pipe'] });
     let progress = '', tail = '';
     media.stdin?.on('error', () => {});

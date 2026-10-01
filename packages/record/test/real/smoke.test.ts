@@ -39,7 +39,7 @@ test('bundled recorder captures private Xvfb, stops, makes a playable local MP4'
     const probe = spawnSync('/usr/bin/ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', made.out], { env, encoding: 'utf8' });
     assert.equal(probe.status, 0, probe.stderr);
     const data = JSON.parse(probe.stdout);
-    assert.ok(data.streams.some((s: { codec_name: string }) => s.codec_name === 'h264'));
+    assert.ok(data.streams.some((s: { codec_name: string; r_frame_rate: string }) => s.codec_name === 'h264' && s.r_frame_rate === '30/1'));
     assert.ok(data.streams.some((s: { codec_name: string }) => s.codec_name === 'mov_text'));
     assert.equal(data.format.tags.title, 'Umer records a demo');
     assert.ok(readFileSync(made.out).length > 1000);

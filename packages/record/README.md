@@ -65,13 +65,14 @@ and makes no network calls. The video itself contains everything visible on the 
 
 | Host/source | Bundled recorder |
 |---|---|
-| Linux Node/Electron, `x11::0` (or another X display) | Screen video; `/usr/bin/ffmpeg` and `/usr/bin/ffprobe` with x11grab and libx264 required |
+| Linux Node/Electron, `x11::0` (or another X display) | Screen video at 30 fps; `/usr/bin/ffmpeg` and `/usr/bin/ffprobe` with x11grab and libx264 required |
 | Linux Wayland, `screen` | Unsupported; pass a consent-aware external protocol-v1 recorder |
 | macOS / Windows | Unsupported by the bundled recorder |
 | Android source from Node | Unsupported by the bundled recorder; external protocol-v1 recorder required |
 | Browser/PWA / React Native (Android/iOS) | No entry: this package requires Node; call a host service or use a native recorder separately |
 
-Only `events: 'none'` is supported by the bundled backend. `make()` reuses the recorded frames;
+Only `events: 'none'` is supported by the bundled backend. Takes are kept lossless, so `make()` is the only lossy pass
+and text stays sharp; it reuses the recorded frames;
 `title` becomes MP4 metadata, and `captions` become a selectable timed subtitle track (not burned-in text).
 Render settings are `crf` (integer 0–51) and `preset` (FFmpeg's standard x264 presets).
 Unknown settings and planners are rejected. `planOnly: true` writes no video and spends nothing.
@@ -81,6 +82,9 @@ State and takes are private (0700 directories/0600 files). Failed or pre-start-s
 leave no take; stop clears active state. A forced SIGKILL or power loss can leave an `active` lock:
 after confirming that recorder has ended, delete only your app's `stateDir/capture/recorder/active`
 to recover. Never remove it while a recording is running.
+
+The [desktop recorder example](../../examples/recorder) adds a screen picker, a recording card with Stop, and a
+saved view with Share.
 
 ## External recorders and verification
 

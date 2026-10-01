@@ -12,6 +12,7 @@ function bench(mode = 'normal') {
 if(a.includes('-show_entries')) { console.log('0.8'); process.exit(0); }
 const out = a.at(-1); fs.writeFileSync(out, 'video');
 if(a.includes('x11grab')) {
+ fs.writeFileSync(${JSON.stringify(join(dir, 'record-args'))}, JSON.stringify(a));
  if(${JSON.stringify(mode)} === 'fail') process.exit(1);
  if(${JSON.stringify(mode)} !== 'pending') console.log('frame=1');
  const t = setTimeout(() => process.exit(0), 800);
@@ -58,6 +59,9 @@ test('records, stops by state, rejects overlap, cleans state, and passes render 
   assert.equal(await running, 0);
   assert.deepEqual(lines.map(e => e.event), ['recording', 'done']);
   assert.deepEqual(readdirSync(b.state), []);
+  // 30 fps constant rate into a lossless master, so the one lossy pass is make().
+  const grab = (JSON.parse(readFileSync(join(b.dir, 'record-args'), 'utf8')) as string[]).join(' ');
+  assert.match(grab, /-framerate 30 .*-fps_mode cfr -r 30 .*-qp 0 /);
   const take = lines[1]!.take as string;
   const before = readdirSync(take);
   const plan = await call(['capture', 'make', take, '--no-planner', '--plan-only'], b.tools);

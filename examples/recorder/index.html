@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screen recorder</title>
+<style>
+  :root {
+    --bg: #131417; --panel: #1b1c20; --raise: #24262b; --line: #2e3036; --text: #f3f3f4; --muted: #a1a3ab;
+    --rec: #f0443a; --rec-deep: #c9302a; --ok: #3fbf74; --focus: #7aa7ff;
+    color-scheme: dark; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+  body { overflow: hidden; -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  button:focus-visible, a:focus-visible, .screen:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .view { height: 100%; display: flex; flex-direction: column; }
+  header { padding: 22px 28px 0; }
+  h1 { font-size: 20px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 4px 0 0; }
+  main { flex: 1; padding: 20px 28px; overflow: auto; }
+  footer { display: flex; align-items: center; gap: 16px; padding: 16px 28px; border-top: 1px solid var(--line); background: var(--panel); }
+  footer .note { flex: 1; color: var(--muted); font-size: 13px; }
+  .screens { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .screen { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; transition: border-color .15s, background .15s; }
+  .screen:hover { border-color: #474a52; }
+  .screen[aria-checked="true"] { border-color: var(--rec); background: #221a1b; box-shadow: 0 0 0 1px var(--rec) inset; }
+  .screen img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 7px; background: #000; }
+  .screen .label { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 4px 2px; }
+  .screen b { font-weight: 600; }
+  .screen span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .primary { display: inline-flex; align-items: center; gap: 10px; height: 42px; padding: 0 20px; border-radius: 10px; background: var(--rec); color: #fff; font-weight: 600; }
+  .primary:hover { background: var(--rec-deep); }
+  .primary:disabled { background: var(--raise); color: #6d7078; cursor: default; }
+  .primary .dot { width: 12px; height: 12px; border-radius: 50%; background: currentColor; }
+  .secondary { height: 42px; padding: 0 18px; border-radius: 10px; background: var(--raise); font-weight: 550; }
+  .secondary:hover { background: #2e3036; }
+  .count { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10, 10, 12, .82); }
+  .count div { font-size: 120px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .count p { position: absolute; bottom: 80px; color: var(--muted); margin: 0; }
+
+  /* The recording card: the whole small window, kept above other windows. */
+  .card { height: 100%; display: flex; align-items: center; gap: 14px; padding: 0 14px 0 18px; background: #18191c; border: 1px solid #34363c; }
+  .pulse { position: relative; width: 14px; height: 14px; flex: none; border-radius: 50%; background: var(--rec); }
+  .pulse::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--rec); opacity: 0; animation: ring 1.6s ease-out infinite; }
+  @keyframes ring { 0% { transform: scale(.5); opacity: .9; } 100% { transform: scale(1.4); opacity: 0; } }
+  .card .what { flex: 1; min-width: 0; }
+  .card .row { display: flex; align-items: baseline; gap: 10px; }
+  .card .state { font-weight: 650; font-size: 15px; }
+  .card .time { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+  .card .where { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 76px; height: 72px; border-radius: 12px; background: var(--rec); color: #fff; font-size: 12.5px; font-weight: 650; }
+  .stop:hover { background: var(--rec-deep); }
+  .stop i { width: 18px; height: 18px; border-radius: 4px; background: #fff; }
+  .stop:disabled { background: var(--raise); color: var(--muted); }
+  .stop:disabled i { width: 18px; height: 18px; border: 2.5px solid var(--muted); border-top-color: transparent; border-radius: 50%; background: none; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .pulse::after, .stop:disabled i { animation: none; } }
+
+  .saved-head { display: flex; align-items: center; gap: 12px; }
+  .tick { width: 30px; height: 30px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; flex: none; }
+  .tick svg { width: 16px; height: 16px; }
+  .result { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  video { width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; background: #000; border: 1px solid var(--line); cursor: grab; }
+  .file { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .file b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .share { position: relative; }
+  .menu { position: absolute; right: 0; bottom: 52px; width: 260px; padding: 6px; border-radius: 12px; background: var(--raise); border: 1px solid #3a3d44; box-shadow: 0 12px 32px rgba(0, 0, 0, .45); }
+  .menu a, .menu button { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; background: none; color: var(--text); text-decoration: none; }
+  .menu a:hover, .menu button:hover { background: #33363d; }
+  .menu small { display: block; color: var(--muted); font-size: 12px; }
+  .toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body>
+<section class="view" id="pick">
+  <header>
+    <h1>New recording</h1>
+    <p class="sub">Choose the screen to record.</p>
+  </header>
+  <main><div class="screens" id="screens" role="radiogroup" aria-label="Screens"></div></main>
+  <footer>
+    <span class="note">Video only: no sound and no keystrokes. Saved to your Videos folder on this computer.</span>
+    <button class="primary" id="start" disabled><span class="dot"></span>Start recording</button>
+  </footer>
+  <div class="count" id="count" hidden><div id="countN">3</div><p>Recording starts in a moment</p></div>
+</section>
+
+<section class="card" id="rec" hidden aria-live="polite">
+  <span class="pulse" id="pulse"></span>
+  <div class="what">
+    <div class="row"><span class="state" id="recState">Starting…</span><span class="time" id="time">0:00</span></div>
+    <div class="where" id="recWhere"></div>
+  </div>
+  <button class="stop" id="stop" disabled><i></i><span id="stopLabel">Stop</span></button>
+</section>
+
+<section class="view" id="saved" hidden>
+  <header>
+    <div class="saved-head">
+      <span class="tick"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
+      <div><h1>Recording saved</h1><p class="sub" id="savedSub"></p></div>
+    </div>
+  </header>
+  <main class="result">
+    <video id="video" controls muted playsinline preload="metadata" draggable="true"></video>
+    <div class="file"><b id="fileName"></b><span class="meta" id="fileMeta"></span></div>
+  </main>
+  <footer>
+    <span class="note">Drag the video into another app, or share it.</span>
+    <button class="secondary" id="again">New recording</button>
+    <div class="share">
+      <button class="primary" id="share" aria-haspopup="menu" aria-expanded="false">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 5l3-3 3 3M3 9v4h10V9"/></svg>Share
+      </button>
+      <div class="menu" id="menu" role="menu" hidden>
+        <a role="menuitem" id="saveCopy">Save a copy…<small>Choose where to put another copy</small></a>
+        <button role="menuitem" id="copyPath">Copy file location<small>Paste it into a chat or an upload box</small></button>
+      </div>
+    </div>
+  </footer>
+</section>
+
+<section class="view" id="failed" hidden>
+  <header><h1>The recording stopped</h1><p class="sub" id="failedWhy"></p></header>
+  <main></main>
+  <footer><span class="note">Nothing was saved.</span><button class="primary" id="retry">Try again</button></footer>
+</section>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const views = ['pick', 'rec', 'saved', 'failed'];
+let screens = [], chosen = null, saved = null, ticker = 0;
+
+// The page lives in a small app window: it sizes itself for each step and the recording card sits in a corner.
+function frame(kind) {
+  const s = window.screen, w = kind === 'card' ? 380 : 800, h = kind === 'card' ? 100 : 680;
+  const left = kind === 'card' ? s.availLeft + s.availWidth - w - 24 : s.availLeft + (s.availWidth - w) / 2;
+  const top = kind === 'card' ? s.availTop + s.availHeight - h - 24 : s.availTop + (s.availHeight - h) / 2;
+  try { window.resizeTo(w, h); window.moveTo(Math.round(left), Math.round(top)); } catch {}
+}
+function show(id) { for (const v of views) $(v).hidden = v !== id; }
+const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const size = (b) => b > 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${(b / 1e6).toFixed(1)} MB`;
+function toast(text) { $('toast').textContent = text; $('toast').hidden = false; setTimeout(() => { $('toast').hidden = true; }, 2200); }
+
+async function loadScreens() {
+  screens = await (await fetch('screens', { cache: 'no-store' })).json();
+  $('screens').replaceChildren(...screens.map((s) => {
+    const b = document.createElement('button');
+    b.className = 'screen'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
+    b.innerHTML = `<img alt=""><div class="label"><b></b><span></span></div>`;
+    b.querySelector('img').src = s.thumb;
+    b.querySelector('b').textContent = s.name;
+    b.querySelector('span').textContent = `${s.width} × ${s.height}`;
+    b.onclick = () => {
+      chosen = s;
+      for (const c of $('screens').children) c.setAttribute('aria-checked', String(c === b));
+      $('start').disabled = false;
+    };
+    return b;
+  }));
+  if (!screens.length) $('screens').textContent = 'No screen can be recorded from this session.';
+}
+
+$('start').onclick = async () => {
+  $('count').hidden = false;
+  for (const n of [3, 2, 1]) { $('countN').textContent = n; await new Promise((r) => setTimeout(r, 800)); }
+  $('count').hidden = true;
+  $('recState').textContent = 'Starting…'; $('time').textContent = '0:00'; $('stop').disabled = true;
+  $('recWhere').textContent = `${chosen.name} · ${chosen.width} × ${chosen.height}`;
+  frame('card'); show('rec');
+  await new Promise((r) => setTimeout(r, 250)); // let the window settle before the first frame
+  const res = await fetch('start', { method: 'POST', body: JSON.stringify({ screen: chosen.id }) });
+  if (!res.ok) fail(await res.text());
+};
+$('stop').onclick = () => { $('stop').disabled = true; fetch('stop', { method: 'POST' }); };
+$('again').onclick = $('retry').onclick = () => { chosen = null; $('start').disabled = true; frame('panel'); show('pick'); loadScreens(); };
+
+function fail(message) { clearInterval(ticker); $('failedWhy').textContent = message; frame('panel'); show('failed'); }
+
+function apply(s) {
+  if (s.state === 'recording') {
+    $('recState').textContent = 'Recording'; $('stopLabel').textContent = 'Stop'; $('stop').disabled = false;
+    $('pulse').hidden = false;
+    const tick = () => { $('time').textContent = clock((Date.now() - s.since) / 1000); };
+    clearInterval(ticker); tick(); ticker = setInterval(tick, 250);
+  } else if (s.state === 'saving') {
+    clearInterval(ticker);
+    $('recState').textContent = 'Saving'; $('stopLabel').textContent = 'Saving'; $('stop').disabled = true; $('pulse').hidden = true;
+  } else if (s.state === 'saved') {
+    saved = s;
+    $('savedSub').textContent = `Saved to ${s.folder}`;
+    $('fileName').textContent = s.name;
+    $('fileMeta').textContent = `${clock(s.seconds)} · ${s.width} × ${s.height} · 30 fps · ${size(s.bytes)}`;
+    $('video').src = `video?${Date.now()}`;
+    $('saveCopy').href = 'video'; $('saveCopy').download = s.name;
+    frame('panel'); show('saved');
+  } else if (s.state === 'error') fail(s.message);
+}
+
+// Share: the system share sheet where the browser has one, otherwise save a copy or copy the location.
+$('share').onclick = async () => {
+  if (navigator.canShare) {
+    const file = new File([await (await fetch('video')).blob()], saved.name, { type: 'video/mp4' });
+    if (navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: saved.name }); } catch {} return; }
+  }
+  const open = $('menu').hidden;
+  $('menu').hidden = !open; $('share').setAttribute('aria-expanded', String(open));
+};
+$('copyPath').onclick = async () => {
+  $('menu').hidden = true; $('share').setAttribute('aria-expanded', 'false');
+  try { await navigator.clipboard.writeText(saved.path); toast('File location copied'); } catch { toast(saved.path); }
+};
+$('saveCopy').onclick = () => { $('menu').hidden = true; $('share').setAttribute('aria-expanded', 'false'); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('menu').hidden = true; });
+$('video').addEventListener('dragstart', (e) => {
+  e.dataTransfer.setData('DownloadURL', `video/mp4:${saved.name}:${new URL('video', location.href)}`);
+});
+
+new EventSource('events').onmessage = (m) => apply(JSON.parse(m.data));
+frame('panel'); show('pick'); loadScreens();
+</script>
+</body>
+</html>

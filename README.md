@@ -11,9 +11,9 @@ BYOKit remains the home for AI accounts, decisions and runtime integrations. Thi
 | [@platform-kits/speak](packages/speak) | 0.1.0, private | Platform text-to-speech |
 | [@platform-kits/browser](packages/browser) | 0.1.0 | Isolated Chromium screenshots of URLs or local HTML |
 
-The split retains the package APIs and native module identities. Speak stays `private: true`; the scope is awaiting
-npm organization setup and these replacement packages have not been published. Existing `@byokit/*` releases stay
-available. Consumer migration, deprecation and removal from BYOKit are separate work.
+The split retains the package APIs and native module identities. New package names use the `@platform-kits` npm
+scope; speak stays `private: true`. Existing `@byokit/*` releases stay available. Consumer migration, deprecation
+and removal from BYOKit are separate work.
 
 ```sh
 npm ci

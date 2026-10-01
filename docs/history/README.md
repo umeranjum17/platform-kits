@@ -27,5 +27,5 @@ timeout branch has an older CI workflow and supplies no additional recorder pack
 approved unmerged series is ported; other open work remains on its existing BYOKit branches.
 
 The new repository was initialized separately with Apache-2.0 and its initial commit is retained as a merge parent
-so the extraction can be reviewed as a normal PR. Delivery is on fm/pk-move; only the configured merge authority
-may update the destination's default branch. npm organization creation and trusted-publisher setup remain pending.
+so the extraction can be reviewed as a normal PR. Delivery is on fm/pk-move and requires a merge commit to preserve
+the extracted ancestry. Each public npm package needs its trusted publisher configured for the release workflow.

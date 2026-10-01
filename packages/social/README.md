@@ -12,6 +12,9 @@ file-backed queue and a scheduler loop. No account, key or subscription comes wi
 own accounts and, for OAuth, its own client registration. Still `private: true`; not published yet. Posting is proven
 end to end against a local Bluesky PDS and a local Mastodon; a proof on the live networks is still pending.
 
+For now posting stays manual: a person approves and sends each post. The kit is not published to npm and is not
+wired to post automatically anywhere; automated posting, including the scheduler loop below, is a later look.
+
 ```sh
 npm install @platform-kits/social
 ```

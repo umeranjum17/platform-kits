@@ -12,5 +12,6 @@
 - Add `@platform-kits/social/node`: `fileQueue({ stateDir })`, which keeps drafts, approvals, posts and media in
   owner-only files under a single-writer lock, and `runScheduler()`, which posts due approvals on an interval.
 - Posting is proven against a local Bluesky PDS and a local Mastodon; a proof on the live networks is still pending.
+  Posting stays manual for now: the kit is not published and not wired to post automatically anywhere.
 - SECURITY: Tokens, app passwords and OAuth sessions live only in the host's sealed Keystore under hashed names;
   there is no plaintext fallback, and errors carry fixed messages without tokens or server bodies.

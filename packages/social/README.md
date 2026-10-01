@@ -9,7 +9,8 @@ The main entry is portable: it uses only `fetch`, Web Crypto, `URL`, `TextEncode
 in Node, Electron, a browser or PWA, and React Native (with Web Crypto and `URL` polyfills; without `Intl.Segmenter`,
 length checks count code points). `@platform-kits/social/node` adds a
 file-backed queue and a scheduler loop. No account, key or subscription comes with the kit: each app brings its
-own accounts and, for OAuth, its own client registration. Still `private: true`; not published yet.
+own accounts and, for OAuth, its own client registration. Still `private: true`; not published yet. Posting is proven
+end to end against a local Bluesky PDS and a local Mastodon; a proof on the live networks is still pending.
 
 ```sh
 npm install @platform-kits/social

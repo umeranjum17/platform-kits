@@ -23,7 +23,13 @@ expect() {
     if screen | grep -Fq "$1"; then echo "ok: $1"; return; fi
     sleep 1
   done
-  echo "missing: $1" >&2; screen >&2; exit 1
+  echo "missing: $1" >&2
+  # Diagnostic failures must not replace the original failed assertion.
+  screen | tee "$captures/timeout-ui.xml" >&2 || true
+  a shell dumpsys window windows > "$captures/timeout-windows.txt" 2>&1 || true
+  a logcat -d -t 300 > "$captures/timeout-logcat.txt" 2>&1 || true
+  a exec-out screencap -p > "$captures/timeout-screen.png" || true
+  exit 1
 }
 # Match resource-id or text; emit its centre in physical display pixels.
 xy() {
@@ -31,11 +37,15 @@ xy() {
 key=sys.argv[1]
 for n in E.fromstring(sys.stdin.read()).iter("node"):
  if n.get("resource-id")==key or n.get("text")==key:
-  x,y,r,b=map(int,re.findall(r"\d+",n.get("bounds"))); print((x+r)//2,(y+b)//2); break
+  x,y,r,b=map(int,re.findall(r"\d+",n.get("bounds")))
+  print(f"target={key} bounds=[{x},{y}][{r},{b}]",file=sys.stderr)
+  print((x+r)//2,(y+b)//2); break
 else: raise SystemExit("missing target: "+key)' "$1"
 }
 tap() {
   location=$(xy "$1")
+  printf 'tap target=%s physical-pixels=%s\n' "$1" "$location" | tee -a "$captures/taps.txt" >&2
+  # shellcheck disable=SC2086 # xy emits the two numeric arguments intentionally.
   a shell input tap $location
 }
 no_capture() {
@@ -74,6 +84,8 @@ expect 'Follow the ring.'
 expect_marker
 location=$(xy screenTarget)
 a exec-out screencap -p > "$captures/byokit-screen-marker.png"
+printf 'tap target=screenTarget physical-pixels=%s\n' "$location" | tee -a "$captures/taps.txt" >&2
+# shellcheck disable=SC2086 # xy emits the two numeric arguments intentionally.
 a shell input tap $location
 expect 'Umer tapped through 1 time.'
 # Explicit dismissal, replacement and auto-dismiss.

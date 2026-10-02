@@ -1,6 +1,6 @@
 {
   "name": "@platform-kits/browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Capture PNGs of URLs or local HTML with an explicitly selected Chromium in an isolated session.",
   "license": "Apache-2.0",
   "type": "module",

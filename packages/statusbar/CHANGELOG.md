@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.2 (2026-10-02)
+
+
+
 - Move to `@platform-kits/statusbar` with the same public API and native identifiers.
 
 ## 0.1.1

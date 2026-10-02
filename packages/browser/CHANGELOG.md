@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.1 (2026-10-02)
+
+
+
 - Move to `@platform-kits/browser` with the same public API and native identifiers.
 
 - Add isolated Chromium sessions for URLs and local HTML, viewport and device scale settings,

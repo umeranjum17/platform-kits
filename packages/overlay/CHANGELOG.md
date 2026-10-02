@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.1 (2026-10-02)
+
+
+
 - Move to `@platform-kits/overlay` with the same public API and native identifiers.
 
 ## 0.3.0 (2026-10-01)

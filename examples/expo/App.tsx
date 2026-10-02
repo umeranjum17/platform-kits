@@ -1,6 +1,6 @@
 // Generic platform demo: overlay, focused field, screen frames and status-bar chip.
 import { useEffect, useRef, useState } from 'react';
-import { PermissionsAndroid, PixelRatio, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Dimensions, PermissionsAndroid, PixelRatio, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { overlay, stateWords, type OverlayState } from '@platform-kits/overlay';
 import { focusedField } from '@platform-kits/overlay/focused-field';
 import { StatusBar } from 'expo-status-bar';
@@ -63,6 +63,11 @@ function Bubble() {
       <TextInput ref={input} testID="fieldInput" value={typed} onChangeText={setTyped} placeholder="Type here, then read it (above)" style={s.input} />
       <Button id="sayPill" label="Show the pill" onPress={() => overlay.say('Inserted. Send it yourself.', undefined, 60000)} />
       <Button id="keepClear" label="Keep the field clear" onPress={keepFieldClear} />
+      <Button id="keepClearAll" label="Keep the whole screen clear" onPress={() => {
+        // No clear spot anywhere: the bubble stays at its own spot and the keepClear event says so.
+        const { width, height } = Dimensions.get('screen');
+        overlay.keepClear([{ left: 0, top: 0, width: width * PixelRatio.get(), height: height * PixelRatio.get() }]);
+      }} />
       <Button id="keepClearOff" label="Stop keeping it clear" onPress={() => { overlay.keepClear([]); setClear('Back at its own spot.'); }} />
       {!!clear && <Text testID="clear" style={s.small}>{clear}</Text>}
     </View>

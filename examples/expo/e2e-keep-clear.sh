@@ -64,9 +64,15 @@ tap keepClear
 expect 'Keeping clear of'
 shot keep-clear-2-after
 [ "$(overlap $(bounds fieldInput) $(bubble))" = 0 ] || { echo 'keepClear left the bubble or pill on the field' >&2; exit 1; }
+# No clear spot anywhere: it stays at its saved spot (still over the field) and says so.
+tap keepClearAll
+expect 'No clear spot: the bubble stays put.'
+shot keep-clear-3-no-space
+set -- $saved; top=$2; set -- $(bubble)
+[ "$2" = "$top" ] || { echo "with no clear spot the bubble moved ($top, now $2)" >&2; exit 1; }
 tap keepClearOff
 expect 'Back at its own spot.'
-shot keep-clear-3-cleared
+shot keep-clear-4-cleared
 set -- $saved; top=$2; set -- $(bubble)
 [ "$2" = "$top" ] || { echo "the bubble did not return to its saved spot ($top, now $2)" >&2; exit 1; }
 tap bubbleStop

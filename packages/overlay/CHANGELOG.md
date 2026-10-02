@@ -2,17 +2,18 @@
 
 ## Unreleased
 
-## 0.3.1 (2026-10-02)
-
-
-
-- Move to `@platform-kits/overlay` with the same public API and native identifiers.
 - FIX: The screen guide's ring goes around the whole target and its label sits in a callout above or below it, so
   neither covers the target or the target's label. `pointHere` takes the target's optional `width` and `height`.
   The callout flips above when there is no room below, stays clear of system bars, cutouts and screen edges, and
   points at the target; a ring at a screen edge stays visible. Ring and callout read on light and dark pages.
   The new optional `avoid` boxes keep the callout off nearby text: it flips above or moves sideways to a clear spot.
 - FIX: The bubble sits on a dark disc with a light rim, so a light mood image no longer disappears on a light page.
+
+## 0.3.1 (2026-10-02)
+
+
+
+- Move to `@platform-kits/overlay` with the same public API and native identifiers.
 
 ## 0.3.0 (2026-10-01)
 

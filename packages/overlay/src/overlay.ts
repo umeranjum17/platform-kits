@@ -48,6 +48,10 @@ export function createOverlay(native: NativeOverlay | null): Overlay {
     stop: () => native.stop(),
     pointHere: async (o) => {
       if (!Number.isFinite(o.x) || !Number.isFinite(o.y) || o.x < 0 || o.y < 0) throw new Error('overlay: point coordinates must be finite and non-negative');
+      for (const n of [o.width, o.height]) if (n !== undefined && (!Number.isFinite(n) || n < 0)) throw new Error('overlay: point size must be finite and non-negative');
+      if (o.avoid && (o.avoid.length > 64 || !o.avoid.every((b) => [b.left, b.top, b.width, b.height].every(Number.isFinite) && b.width >= 0 && b.height >= 0))) {
+        throw new Error('overlay: point avoid must be at most 64 boxes with finite edges and non-negative sizes');
+      }
       if (!o.label.trim()) throw new Error('overlay: point label must not be empty');
       const ms = o.ms ?? SAY_MS;
       if (!Number.isFinite(ms) || ms < 1 || ms > 60000) throw new Error('overlay: point ms must be between 1 and 60000');

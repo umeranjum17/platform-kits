@@ -153,13 +153,18 @@ test('point marker passes through the captured space, custom timing and native o
   const space = { width: 1080, height: 2400, density: 3, densityDpi: 480, rotation: 0 as const, displayId: 0, origin: 'top-left' as const, unit: 'physical-pixels' as const };
   assert.equal(await o.pointHere({ x: 100, y: 200, label: 'Umer, tap here', space }), 'shown');
   assert.equal(await o.pointHere({ x: 0, y: 0, label: 'Top', ms: 30 }), 'shown');
+  const avoid = [{ left: 0, top: 1000, width: 1080, height: 60 }];
+  assert.equal(await o.pointHere({ x: 540, y: 900, width: 600, height: 0, label: 'Sized', avoid }), 'shown');
   await o.dismissPoint();
   assert.deepEqual(calls, [
     ['pointHere', { x: 100, y: 200, label: 'Umer, tap here', space, ms: 2500 }],
-    ['pointHere', { x: 0, y: 0, label: 'Top', ms: 30 }], ['dismissPoint'],
+    ['pointHere', { x: 0, y: 0, label: 'Top', ms: 30 }],
+    ['pointHere', { x: 540, y: 900, width: 600, height: 0, label: 'Sized', avoid, ms: 2500 }], ['dismissPoint'],
   ]);
   const before = calls.length;
-  for (const opts of [{ x: NaN }, { y: Infinity }, { x: -1 }, { label: ' ' }, { ms: 0 }, { ms: 60001 }]) {
+  for (const opts of [{ x: NaN }, { y: Infinity }, { x: -1 }, { label: ' ' }, { ms: 0 }, { ms: 60001 }, { width: -1 }, { height: NaN }, { width: Infinity },
+    { avoid: [{ left: NaN, top: 0, width: 1, height: 1 }] }, { avoid: [{ left: 0, top: 0, width: -1, height: 1 }] },
+    { avoid: Array.from({ length: 65 }, () => ({ left: 0, top: 0, width: 1, height: 1 })) }]) {
     await assert.rejects(o.pointHere({ x: 1, y: 1, label: 'Here', ...opts }));
   }
   assert.equal(calls.length, before);

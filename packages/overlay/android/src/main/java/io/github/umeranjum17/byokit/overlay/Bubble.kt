@@ -118,6 +118,11 @@ class Bubble(
     image = ImageView(context).apply {
       layoutParams = LinearLayout.LayoutParams(size, size)
       scaleType = ImageView.ScaleType.FIT_CENTER
+      // A dark disc with a light rim, so a mood reads on light and dark pages alike, even a light glyph on transparency.
+      background = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL; setColor(0xFF202124.toInt()); setStroke(dp(context, 1.5f), 0xE6FFFFFF.toInt())
+      }
+      clipToOutline = true
       contentDescription = a11yLabel
       setOnClickListener { events.emit(OverlayEvent.Tap) }
       setOnTouchListener(Touch(context))

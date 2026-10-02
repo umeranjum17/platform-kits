@@ -85,6 +85,24 @@ expect_marker
 tap screenPointShort
 sleep 2
 if marker; then echo 'marker remained after timeout' >&2; exit 1; fi
+# The tour: targets at the top, left edge, middle, right edge and bottom; each tap moves the ring to the next.
+tap screenTour
+expect 'Five places on one screen.'
+tap tourStart
+n=1
+for step in tourTop tourLeft tourMiddle tourRight tourBottom; do
+  expect "Step $n of 5."
+  expect_marker
+  sleep 1
+  a exec-out screencap -p > "$captures/byokit-screen-tour-$n-$step.png"
+  tap "$step"
+  n=$((n + 1))
+done
+expect 'All done. Umer found every step.'
+sleep 1
+if marker; then echo 'marker remained after the tour' >&2; exit 1; fi
+tap tourClose
+expect 'Picture ready.'
 # A successful capture never exempts the next request from consent.
 tap screenCapture
 expect 'android:id/button1'

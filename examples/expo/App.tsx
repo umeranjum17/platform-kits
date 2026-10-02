@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { PermissionsAndroid, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { overlay, stateWords, type OverlayState } from '@platform-kits/overlay';
 import { focusedField } from '@platform-kits/overlay/focused-field';
+import { StatusBar } from 'expo-status-bar';
 import { stateWords as chipWords, status as chip } from '@platform-kits/statusbar';
 import { ScreenDemo } from './ScreenDemo.tsx';
 function Button({ id, label, onPress }: { id: string; label: string; onPress: () => void }) {
@@ -94,7 +95,7 @@ function Chip() {
 
 export default function App() {
   return process.env.EXPO_PUBLIC_SCREEN_DEMO === '1' ? <ScreenDemo /> :
-    <SafeAreaView style={{ flex: 1 }}><ScrollView contentContainerStyle={s.screen}>
+    <SafeAreaView style={{ flex: 1 }}><StatusBar style="dark" /><ScrollView contentContainerStyle={s.screen}>
       <Text style={s.title}>Platform kits on {Platform.OS}</Text><Bubble /><Chip />
     </ScrollView></SafeAreaView>;
 }

@@ -698,14 +698,16 @@ export interface ScreenFrame {
 }
 export type NativeScreenFrame = ScreenFrame;
 export function createScreenFrame(native: NativeScreenFrame | null): ScreenFrame;
-export type PointHereOptions = { x: number; y: number; label: string; space?: ScreenSpace; ms?: number };
+export type PointAvoid = { left: number; top: number; width: number; height: number };
+export type PointHereOptions = { x: number; y: number; width?: number; height?: number; label: string; avoid?: PointAvoid[]; space?: ScreenSpace; ms?: number };
 export type PointHereResult = 'shown' | 'needs-permission' | 'not-running' | 'display-changed' | 'unsupported';
 ```
 
 Both overlay entries export the point types. `Overlay` adds `pointHere(o: PointHereOptions):
 Promise<PointHereResult>` and `dismissPoint(): Promise<void>`. `NativeOverlay` receives the same options
-with `ms` required; JS supplies 2500 by default. It validates finite, nonnegative coordinates, a nonblank
-label and a duration of 1–60000 ms before passing all fields through.
+with `ms` required; JS supplies 2500 by default. It validates finite, nonnegative coordinates and sizes, a
+nonblank label, at most 64 `avoid` boxes with finite edges and nonnegative sizes, and a duration of 1–60000 ms
+before passing all fields through.
 
 Every frame asks for fresh MediaProjection consent for the entire default display, including system bars.
 Only one request runs at once. Its PNG lives in app cache; the next request deletes previous kit frames,
@@ -715,9 +717,13 @@ than returning an incompatible coordinate space. Nothing uploads the image.
 
 The marker uses full-display physical pixels from the image. Passing `space` rejects stale display metrics;
 React Native layout coordinates must first be multiplied by the display density. It requires a running
-window or accessibility overlay host. Its ring and label occupy a separate nonfocusable, nontouchable
-window, announce the label to accessibility clients, and dismiss on timeout, explicit dismissal, replacement,
-display changes or host teardown. Application overlay opacity stays below Android's tap-through threshold.
+window or accessibility overlay host. `x`/`y` is the target's centre and `width`/`height` its size; the ring
+goes around the target outside its edges (a 48 dp circle when no size is given), and the label callout sits
+below it, or above when there is no room below, inside the display minus system bars and cutout
+(`PointLayout.plan`). With `avoid` boxes it takes the first spot clear of them: below, above, then either nudged
+sideways in 8 dp steps with the target's centre still under its arrow; otherwise the spot covering the least. Ring and callout occupy a separate nonfocusable, nontouchable window, announce the label
+to accessibility clients, and dismiss on timeout, explicit dismissal, replacement, display changes or host
+teardown. Application overlay opacity stays within Android's tap-through limit.
 
 ### 7.5 Kotlin parts (package `io.github.umeranjum17.byokit.overlay`, one job each)
 

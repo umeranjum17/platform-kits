@@ -31,15 +31,15 @@ for n in E.fromstring(sys.stdin.read()).iter("node"):
 else: raise SystemExit("missing: "+sys.argv[1])' "$1"
 }
 tap() { set -- $(bounds "$1"); a shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); }
-# The bubble's overlay window (bubble plus pill): left top right bottom.
+# The bubble's overlay window (bubble plus pill): left top right bottom. Android 11+ prints `frame=`, older `mFrame=`.
 bubble() {
-  a shell dumpsys window windows | python3 -c 'import sys,re
-w=sys.stdin.read().split("Window #")
-for b in w:
- if "ty=APPLICATION_OVERLAY" in b and "'"$app"'" in b:
-  m=re.search(r"mFrame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",b)
+  a shell dumpsys window windows > "$captures/windows.txt"
+  python3 -c 'import sys,re
+for b in open(sys.argv[1]).read().split("Window #"):
+ if "ty=APPLICATION_OVERLAY" in b and sys.argv[2] in b:
+  m=re.search(r"\b(?:mFrame|frame)=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",b)
   if m: print(*m.groups()); break
-else: raise SystemExit("no bubble window")'
+else: raise SystemExit("no bubble window (see windows.txt)")' "$captures/windows.txt" "$app"
 }
 # Prints the overlap area of two boxes (left top right bottom each).
 overlap() { python3 -c 'import sys;a=list(map(int,sys.argv[1:5]));b=list(map(int,sys.argv[5:9]));print(max(0,min(a[2],b[2])-max(a[0],b[0]))*max(0,min(a[3],b[3])-max(a[1],b[1])))' "$@"; }

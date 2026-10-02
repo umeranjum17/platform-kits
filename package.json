@@ -21,9 +21,9 @@
     "test:browser": "sh scripts/test.sh 'packages/browser/test/*.test.ts'"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.6.3",
     "esbuild": "^0.28.2",
     "playwright": "^1.63.0",
-    "typescript": "^5.9.0"
+    "typescript": "^7.0.2"
   }
 }

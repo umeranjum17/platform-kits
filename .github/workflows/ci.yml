@@ -191,7 +191,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: byokit-screen-proof
-          path: examples/expo/.screen-captures/*.png
+          # Only these task-owned captures/diagnostics; hidden files elsewhere stay excluded.
+          include-hidden-files: true
+          path: |
+            examples/expo/.screen-captures/*.png
+            examples/expo/.screen-captures/taps.txt
+            examples/expo/.screen-captures/timeout-ui.xml
+            examples/expo/.screen-captures/timeout-windows.txt
+            examples/expo/.screen-captures/timeout-logcat.txt
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

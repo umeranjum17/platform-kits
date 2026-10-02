@@ -11,11 +11,13 @@ import { fileURLToPath } from 'node:url';
 import { Capture, CaptureError, errorWords, words } from '@platform-kits/record';
 
 export type Screen = { id: string; name: string; width: number; height: number; thumb: string };
+/** The screen an active recording is on, so a reloaded page or a second window shows the same card. */
+type Active = { screen: string; width: number; height: number };
 export type State =
   | { state: 'idle' }
-  | { state: 'starting' }
-  | { state: 'recording'; since: number; screen: string }
-  | { state: 'saving' }
+  | ({ state: 'starting' } & Active)
+  | ({ state: 'recording'; since: number } & Active)
+  | ({ state: 'saving' } & Active)
   | { state: 'saved'; name: string; path: string; folder: string; bytes: number; seconds: number; width: number; height: number }
   | { state: 'error'; message: string };
 export type RecorderOptions = {
@@ -62,13 +64,14 @@ export function recorderServer(o: RecorderOptions): { server: Server; token: str
   };
 
   async function run(screen: Screen): Promise<void> {
+    const on: Active = { screen: screen.name, width: screen.width, height: screen.height };
     let take: string | undefined;
     try {
       for await (const e of o.capture.record({ source: `x11:${screen.id}`, root: o.takesDir, maxSeconds: 3600 })) {
-        if (e.event === 'recording') set({ state: 'recording', since: Date.now(), screen: screen.name });
+        if (e.event === 'recording') set({ state: 'recording', since: Date.now(), ...on });
         if (e.event !== 'done') continue;
         take = e.take;
-        set({ state: 'saving' });
+        set({ state: 'saving', ...on });
         const made = await o.capture.make({ take, title: 'Screen recording', set: { crf: 18, preset: 'fast' } });
         mkdirSync(o.outDir, { recursive: true });
         const out = join(o.outDir, `Screen recording ${stamp(o.now?.() ?? new Date())}.mp4`);
@@ -115,7 +118,7 @@ export function recorderServer(o: RecorderOptions): { server: Server; token: str
       const screen = known.find(s => s.id === id);
       if (!screen) return send(res, 400, 'Pick a screen first.');
       if (['starting', 'recording', 'saving'].includes(state.state)) return send(res, 409, words('capture.busy'));
-      set({ state: 'starting' });
+      set({ state: 'starting', screen: screen.name, width: screen.width, height: screen.height });
       void run(screen);
       return send(res, 202);
     }

@@ -188,15 +188,25 @@ $('again').onclick = $('retry').onclick = () => { chosen = null; $('start').disa
 
 function fail(message) { clearInterval(ticker); $('failedWhy').textContent = message; frame('failed'); show('failed'); }
 
+// Every active state names its screen, so a reloaded page or a second window opens the same card as the one that started.
+function card(s, label) {
+  $('recState').textContent = label;
+  $('recWhere').textContent = `${s.screen} · ${s.width} × ${s.height}`;
+  if ($('rec').hidden) { frame('card'); show('rec'); }
+}
+
 function apply(s) {
-  if (s.state === 'recording') {
-    $('recState').textContent = 'Recording'; $('stopLabel').textContent = 'Stop'; $('stop').disabled = false;
+  if (s.state === 'starting') {
+    clearInterval(ticker); card(s, 'Starting…');
+    $('time').textContent = '0:00'; $('stopLabel').textContent = 'Stop'; $('stop').disabled = true;
+  } else if (s.state === 'recording') {
+    card(s, 'Recording'); $('stopLabel').textContent = 'Stop'; $('stop').disabled = false;
     $('pulse').hidden = false;
     const tick = () => { $('time').textContent = clock((Date.now() - s.since) / 1000); };
     clearInterval(ticker); tick(); ticker = setInterval(tick, 250);
   } else if (s.state === 'saving') {
-    clearInterval(ticker);
-    $('recState').textContent = 'Saving'; $('stopLabel').textContent = 'Saving'; $('stop').disabled = true; $('pulse').hidden = true;
+    clearInterval(ticker); card(s, 'Saving');
+    $('stopLabel').textContent = 'Saving'; $('stop').disabled = true; $('pulse').hidden = true;
   } else if (s.state === 'saved') {
     saved = s;
     $('savedSub').textContent = `Saved to ${s.folder}`;

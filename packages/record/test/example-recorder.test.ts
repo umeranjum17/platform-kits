@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { get } from 'node:http';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { scratchDir } from '../../test-support.ts';
 import { Capture, type MakeOptions } from '../src/index.ts';
@@ -70,6 +70,88 @@ test('recorder example: token and host gate, picks a known screen, records, stop
     assert.deepEqual(fake.invocations().find(i => i.argv[1] === 'record')?.argv.slice(2, 4), ['--source', 'x11::5.0']);
     await events.cancel();
   } finally {
+    server.closeAllConnections();
+    server.close();
+  }
+});
+
+// Explicit opt-in, like the browser kit's real Chromium test: CI passes its installed test Chromium, never a person's.
+test('recorder example page: a reload, a second window and a late window all show the active card; Stop saves', {
+  skip: !process.env.PLATFORM_KITS_CHROME, timeout: 60_000,
+}, async () => {
+  const { chromium } = await import('playwright');
+  const dir = scratchDir('page');
+  const made = join(dir, 'made.mp4');
+  writeFileSync(made, 'fake');
+  // Each step of a take waits for the test to release it, so every state can be joined while it lasts.
+  const gate = () => { let open!: () => void; const wait = new Promise<void>(r => { open = r; }); return { wait, open }; };
+  let saves = 0;
+  let take = { recording: gate(), stopped: gate(), made: gate() };
+  const capture = {
+    async *record() {
+      const t = take;
+      await t.recording.wait; yield { event: 'recording' };
+      await t.stopped.wait; yield { event: 'done', take: join(dir, 'take'), seconds: 3 };
+    },
+    stop: async () => { take.stopped.open(); return 'stopping'; },
+    make: async () => { await take.made.wait; return { out: made }; },
+  } as unknown as Pick<Capture, 'record' | 'stop' | 'make'>;
+  const { server, token } = recorderServer({
+    capture, screens: () => [{ id: ':5.0', name: 'Screen 1', width: 1920, height: 1080, thumb: 'data:,' }],
+    outDir: join(dir, 'Videos'), takesDir: join(dir, 'takes'), now: () => new Date(2026, 9, 1, 9, 5, 7 + saves++),
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/${token}/`;
+  const browser = await chromium.launch({ executablePath: process.env.PLATFORM_KITS_CHROME });
+  const open = async () => { const page = await browser.newPage(); await page.goto(url); return page; };
+  // What a person sees: which view is up, and the card's words and Stop button.
+  const sees = (page: Awaited<ReturnType<typeof open>>, state: string) => page.waitForFunction((state) => {
+    const $ = (id: string) => document.getElementById(id) as HTMLButtonElement;
+    return $('recState').textContent === state && !$('rec').hidden && $('pick').hidden && $('failed').hidden;
+  }, state).then(() => page.evaluate(() => {
+    const $ = (id: string) => document.getElementById(id) as HTMLButtonElement;
+    return { where: $('recWhere').textContent, stop: $('stopLabel').textContent, enabled: !$('stop').disabled, visible: $('stop').checkVisibility() };
+  }));
+  const where = 'Screen 1 · 1920 × 1080';
+  const start = async (page: Awaited<ReturnType<typeof open>>) => { await page.click('.screen'); await page.click('#start'); };
+  try {
+    const first = await open();
+    await start(first);
+    assert.deepEqual(await sees(first, 'Starting…'), { where, stop: 'Stop', enabled: false, visible: true });
+    const second = await open();
+    assert.deepEqual(await sees(second, 'Starting…'), { where, stop: 'Stop', enabled: false, visible: true });
+
+    take.recording.open();
+    const recording = { where, stop: 'Stop', enabled: true, visible: true };
+    assert.deepEqual(await sees(first, 'Recording'), recording);
+    assert.deepEqual(await sees(second, 'Recording'), recording);
+    await first.reload();
+    assert.deepEqual(await sees(first, 'Recording'), recording, 'a reloaded page shows the active card with Stop');
+
+    await first.click('#stop');
+    const saving = { where, stop: 'Saving', enabled: false, visible: true };
+    assert.deepEqual(await sees(second, 'Saving'), saving);
+    const late = await open();
+    assert.deepEqual(await sees(late, 'Saving'), saving);
+    take.made.open();
+    for (const page of [first, second, late]) {
+      await page.waitForSelector('#saved:not([hidden])');
+      assert.equal(await page.textContent('#fileName'), 'Screen recording 2026-10-01 at 09.05.07.mp4');
+    }
+
+    // A window still on the saved view follows the next recording someone else starts.
+    take = { recording: gate(), stopped: gate(), made: gate() };
+    await first.click('#again');
+    await start(first);
+    assert.deepEqual(await sees(second, 'Starting…'), { where, stop: 'Stop', enabled: false, visible: true });
+    take.recording.open();
+    assert.deepEqual(await sees(second, 'Recording'), recording);
+    await second.click('#stop');
+    take.made.open();
+    await first.waitForSelector('#saved:not([hidden])');
+  } finally {
+    await browser.close();
     server.closeAllConnections();
     server.close();
   }

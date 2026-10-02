@@ -18,7 +18,7 @@
     "check:readme": "node scripts/readme-check.ts",
     "smoke:pack": "node scripts/pack-smoke.ts",
     "test": "sh scripts/test.sh",
-    "test:browser": "sh scripts/test.sh 'packages/browser/test/*.test.ts'"
+    "test:browser": "sh scripts/test.sh 'packages/browser/test/*.test.ts' packages/record/test/example-recorder.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

@@ -1,6 +1,6 @@
 // Generic platform demo: overlay, focused field, screen frames and status-bar chip.
-import { useEffect, useState } from 'react';
-import { PermissionsAndroid, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { PermissionsAndroid, PixelRatio, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { overlay, stateWords, type OverlayState } from '@platform-kits/overlay';
 import { focusedField } from '@platform-kits/overlay/focused-field';
 import { StatusBar } from 'expo-status-bar';
@@ -19,6 +19,8 @@ function Bubble() {
   const [taps, setTaps] = useState('');
   const [typed, setTyped] = useState('');
   const [field, setField] = useState('');
+  const input = useRef<TextInput>(null);
+  const [clear, setClear] = useState('');
   useEffect(() => {
     overlay.state().then(setState);
     const offState = overlay.on('state', (e) => setState(e.state));
@@ -29,7 +31,8 @@ function Bubble() {
       setField(`available: ${await focusedField.available()}, read: ${JSON.stringify(read)}`);
       overlay.say(read ? `Read: ${read.text}` : 'No text field in focus.');
     });
-    return () => { offState(); offTap(); offLong(); };
+    const offClear = overlay.on('keepClear', (e) => setClear(e.clear ? 'The bubble is clear of the field.' : 'No clear spot: the bubble stays put.'));
+    return () => { offState(); offTap(); offLong(); offClear(); };
   }, []);
   const start = async () => {
     const s = await overlay.start({
@@ -38,6 +41,14 @@ function Bubble() {
     });
     if (s === 'needs-permission') await overlay.openPermission();
   };
+  // The field's box in full-display pixels (the window is edge to edge), then a pill that would otherwise cover it.
+  const keepFieldClear = () => input.current?.measureInWindow((x, y, width, height) => {
+    const d = PixelRatio.get();
+    const box = { left: x * d, top: y * d, width: width * d, height: height * d };
+    overlay.keepClear([box]);
+    overlay.say('Inserted. Send it yourself.', undefined, 60000);
+    setClear(`Keeping clear of ${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}×${Math.round(box.height)}.`);
+  });
   return (
     <View style={s.sheet}>
       <Text testID="bubble" style={s.words}>{stateWords(state)}</Text>
@@ -49,7 +60,11 @@ function Bubble() {
         setField(`available: ${await focusedField.available()}, read: ${JSON.stringify(await focusedField.read())}`);
       }} />
       {!!field && <Text testID="field" style={s.small}>{field}</Text>}
-      <TextInput testID="fieldInput" value={typed} onChangeText={setTyped} placeholder="Type here, then read it (above)" style={s.input} />
+      <TextInput ref={input} testID="fieldInput" value={typed} onChangeText={setTyped} placeholder="Type here, then read it (above)" style={s.input} />
+      <Button id="sayPill" label="Show the pill" onPress={() => overlay.say('Inserted. Send it yourself.', undefined, 60000)} />
+      <Button id="keepClear" label="Keep the field clear" onPress={keepFieldClear} />
+      <Button id="keepClearOff" label="Stop keeping it clear" onPress={() => { overlay.keepClear([]); setClear('Back at its own spot.'); }} />
+      {!!clear && <Text testID="clear" style={s.small}>{clear}</Text>}
     </View>
   );
 }

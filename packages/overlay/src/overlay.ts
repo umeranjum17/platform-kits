@@ -23,6 +23,7 @@ const unsupported: Overlay = {
   setMood: () => {},
   setLabel: () => {},
   setRules: () => {},
+  keepClear: () => {},
   openPanel: async () => {},
   closePanel: async () => {},
   on: () => () => {},
@@ -62,6 +63,12 @@ export function createOverlay(native: NativeOverlay | null): Overlay {
     setMood: (mood) => native.setMood(mood),
     setLabel: (label) => native.setLabel(label),
     setRules: (rules) => native.setRules(rules),
+    keepClear: (rects) => {
+      if (rects.length > 64 || !rects.every((b) => [b.left, b.top, b.width, b.height].every(Number.isFinite) && b.width >= 0 && b.height >= 0)) {
+        throw new Error('overlay: keepClear takes at most 64 boxes with finite edges and non-negative sizes');
+      }
+      native.keepClear(rects.map(({ left, top, width, height }) => ({ left, top, width, height })));
+    },
     openPanel: (props = {}) => native.openPanel(props),
     closePanel: () => native.closePanel(),
     on(type, fn) {

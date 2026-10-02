@@ -20,6 +20,7 @@ function fakeNative() {
     setMood: (mood) => { calls.push(['setMood', mood]); },
     setLabel: (label) => { calls.push(['setLabel', label]); },
     setRules: (rules) => { calls.push(['setRules', rules]); },
+    keepClear: (rects) => { calls.push(['keepClear', rects]); },
     openPanel: async (props) => { calls.push(['openPanel', props]); },
     closePanel: async () => { calls.push(['closePanel']); },
     logTap: async (app, action) => { calls.push(['logTap', app, action]); },
@@ -142,6 +143,7 @@ test('createOverlay(null) is unsupported everywhere and does nothing', async () 
   assert.equal(o.setMood('calm'), undefined);
   assert.equal(o.setLabel('Voice'), undefined);
   assert.equal(o.setRules(rules), undefined);
+  assert.equal(o.keepClear([{ left: 0, top: 0, width: 1, height: 1 }]), undefined);
   const off = o.on('tap', () => assert.fail('never fires'));
   assert.equal(typeof off, 'function');
   off();
@@ -172,4 +174,18 @@ test('point marker passes through the captured space, custom timing and native o
   assert.equal(await o.pointHere({ x: 1, y: 1, label: 'Here', space }), 'display-changed');
   assert.equal(await createOverlay(null).pointHere({ x: 1, y: 1, label: 'Here' }), 'unsupported');
   await createOverlay(null).dismissPoint();
+});
+
+test('keepClear passes plain boxes through and clears with []; invalid boxes never reach native', () => {
+  const { native, calls } = fakeNative();
+  const o = createOverlay(native);
+  const field = { left: 84, top: 1205, width: 986, height: 360 };
+  o.keepClear([{ ...field, extra: 1 } as typeof field, { left: 0.5, top: 10, width: 0, height: 0 }]);
+  o.keepClear([]);
+  assert.deepEqual(calls, [['keepClear', [field, { left: 0.5, top: 10, width: 0, height: 0 }]], ['keepClear', []]]);
+  for (const bad of [{ left: NaN }, { top: Infinity }, { width: -1 }, { height: -0.5 }]) {
+    assert.throws(() => o.keepClear([{ ...field, ...bad }]), /keepClear/);
+  }
+  assert.throws(() => o.keepClear(Array.from({ length: 65 }, () => field)), /keepClear/);
+  assert.equal(calls.length, 2);
 });

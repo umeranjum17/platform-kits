@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Platform kits example",
+    "slug": "platform-kits-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.github.umeranjum17.byokit.example"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1b1b1a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "io.github.umeranjum17.byokit.example"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "@platform-kits/overlay",
+        {
+          "moods": {
+            "bubble": "./assets/android-icon-foreground.png",
+            "bubble_note": "./assets/android-icon-monochrome.png"
+          }
+        }
+      ],
+      "@platform-kits/statusbar",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          },
+          "ios": {}
+        }
+      ],
+      "./icon-plugin.cjs"
+    ]
+  }
+}

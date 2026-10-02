@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "composite": false, "declaration": false },
+  "include": ["packages/*/src", "packages/*/test", "packages/test-support.ts", "test-support", "scripts/*.ts"],
+  // Expo's React Native globals are checked in each package's build program.
+  "exclude": ["packages/overlay/src/rn.ts", "packages/overlay/src/focused-field.rn.ts", "packages/overlay/src/screen-frame.rn.ts", "packages/statusbar/src/rn.ts", "packages/speak/src/rn.ts"]
+}

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.2 (2026-10-02)
+
+
+
 - FIX: The screen guide's ring goes around the whole target and its label sits in a callout above or below it, so
   neither covers the target or the target's label. `pointHere` takes the target's optional `width` and `height`.
   The callout flips above when there is no room below, stays clear of system bars, cutouts and screen edges, and

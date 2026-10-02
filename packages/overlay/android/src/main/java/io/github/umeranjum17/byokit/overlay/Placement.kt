@@ -12,6 +12,12 @@ enum class Edge { LEFT, RIGHT }
 /** Where the bubble rests: an edge, and y as 0..1 of the usable height (docs/capability-kits.md 7.3, 7.5). */
 data class Spot(val edge: Edge, val y: Float)
 
+/**
+ * A box the bubble and its pill keep clear of, such as a text field or a send button: its top-left corner and size in
+ * screen pixels (full display, origin top-left), as an accessibility node's bounds in screen report them.
+ */
+data class ClearRect(val left: Int, val top: Int, val width: Int, val height: Int)
+
 /** Pure placement maths for the bubble, in pixels of the screen it sits on. */
 object Placement {
   /** How far a touch moves before it is a drag, in dp. */
@@ -43,4 +49,22 @@ object Placement {
 
   private fun restBottom(bottom: Int, bubble: Size, imeTopPx: Int?): Int =
     if (imeTopPx == null) bottom else minOf(bottom, imeTopPx - bubble.h)
+
+  /**
+   * The top for the whole row (bubble and pill, [row] big, its left at [x]) with [rects] kept clear: [restY] when the
+   * row there covers none of them, else the nearest top in the usable band (below the status bar, above the keyboard)
+   * where it covers none, the higher one on a tie. Null when there is no such top: the caller keeps [restY] rather
+   * than moving onto other text, and says so. Only the top moves; the edge and the remembered spot stay.
+   */
+  fun keepClear(
+    x: Int, restY: Int, row: Size, screen: Size, insetTopPx: Int, imeTopPx: Int?, rects: List<ClearRect>,
+  ): Int? {
+    val near = rects.filter { it.width > 0 && it.height > 0 && it.left < x + row.w && it.left + it.width > x }
+    fun clear(y: Int) = near.none { y < it.top + it.height && y + row.h > it.top }
+    if (clear(restY)) return restY
+    val (top, bottom) = band(screen, row, insetTopPx).let { (t, b) -> t to restBottom(b, row, imeTopPx) }
+    return (listOf(top, bottom) + near.flatMap { listOf(it.top - row.h, it.top + it.height) })
+      .filter { it in top..bottom && clear(it) }
+      .minWithOrNull(compareBy({ kotlin.math.abs(it - restY) }, { it }))
+  }
 }

@@ -8,6 +8,11 @@
   points at the target; a ring at a screen edge stays visible. Ring and callout read on light and dark pages.
   The new optional `avoid` boxes keep the callout off nearby text: it flips above or moves sideways to a clear spot.
 - FIX: The bubble sits on a dark disc with a light rim, so a light mood image no longer disappears on a light page.
+- FIX: The bubble and its pill no longer have to cover the text field or controls an app names.
+  `overlay.keepClear(rects)` (Kotlin `ServiceBubble.keepClear`) takes boxes in full-display physical pixels and moves
+  the whole bubble-and-pill row up or down to the nearest clear spot above the keyboard, keeping the saved spot.
+  `keepClear([])`, `stop()`, a foreground-app change or a display-size change drops the boxes. With no clear spot the
+  bubble stays put and a `keepClear` event reports `clear: false`.
 
 ## 0.3.1 (2026-10-02)
 

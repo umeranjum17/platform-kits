@@ -568,7 +568,8 @@ export type OverlayEvent =
   | { type: 'longPress' }
   | { type: 'moved'; edge: Edge; y: number }        // y: 0–1 of the usable height
   | { type: 'state'; state: OverlayState }
-  | { type: 'panel'; open: boolean };
+  | { type: 'panel'; open: boolean }
+  | { type: 'keepClear'; clear: boolean };          // false: no clear spot left, so the bubble stays at its own spot
 export type OverlayEventType = OverlayEvent['type'];
 // State transitions (native side, reported by state() and the `state` event):
 // - 'off' before the first start() and after stop().
@@ -579,6 +580,7 @@ export type OverlayEventType = OverlayEvent['type'];
 //   or ByokitAccessibility.detach ('accessibility'). start() again is the way back to 'on'.
 // - 'unsupported' only from createOverlay(null) (no native module: iOS, web, Node).
 export type TapEntry = { app: string; at: number; action: string };   // no text field, by design (D-O)
+export type ClearRect = { left: number; top: number; width: number; height: number };   // full-display physical pixels
 export interface Overlay {
   state(): Promise<OverlayState>;
   openPermission(): Promise<void>;     // window: the "display over other apps" screen; accessibility: accessibility settings
@@ -588,6 +590,7 @@ export interface Overlay {
   setMood(mood: string): void;
   setLabel(label: string | null): void;   // TalkBack label for the bubble; null clears it
   setRules(rules: AppRules): void;
+  keepClear(rects: ClearRect[]): void;   // up to 64; the bubble and pill move up or down off them; [] clears; the saved spot stays
   openPanel(props?: Record<string, string>): Promise<void>;
   closePanel(): Promise<void>;
   on<T extends OverlayEventType>(type: T, fn: (e: Extract<OverlayEvent, { type: T }>) => void): () => void;   // listener set
@@ -604,6 +607,7 @@ export interface NativeOverlay {                         // what the Kotlin modu
   setMood(mood: string): void;
   setLabel(label: string | null): void;
   setRules(rules: AppRules): void;
+  keepClear(rects: ClearRect[]): void;
   openPanel(props: Record<string, string>): Promise<void>;
   closePanel(): Promise<void>;
   logTap(app: string, action: string): Promise<void>;
@@ -731,7 +735,7 @@ teardown. Application overlay opacity stays within Android's tap-through limit.
 data class Size(val w: Int, val h: Int)
 data class Spot(val edge: Edge, val y: Float)                            // y in 0..1
 enum class Edge { LEFT, RIGHT }
-sealed class OverlayEvent { object Tap; object LongPress; data class Moved(val spot: Spot); data class State(val state: String); data class Panel(val open: Boolean) }   // each extends OverlayEvent
+sealed class OverlayEvent { object Tap; object LongPress; data class Moved(val spot: Spot); data class State(val state: String); data class Panel(val open: Boolean); data class KeepClear(val clear: Boolean) }   // each extends OverlayEvent
 class Listeners<T> { fun add(fn: (T) -> Unit): () -> Unit; fun emit(e: T) }   // a set: add returns its own remover; one throwing listener never stops the rest
 interface SpotStore { fun get(key: String): Spot?; fun put(key: String, spot: Spot) }
 object Placement {                                                       // pure, JVM-tested
@@ -739,12 +743,14 @@ object Placement {                                                       // pure
   fun isDrag(dxPx: Float, dyPx: Float, density: Float): Boolean          // hypot > DRAG_SLOP_DP * density
   fun snap(xPx: Int, yPx: Int, screen: Size, bubble: Size, insetTopPx: Int, imeTopPx: Int?): Spot   // nearest edge, clamped
   fun toPixels(spot: Spot, screen: Size, bubble: Size, insetTopPx: Int, imeTopPx: Int?): Pair<Int, Int>   // rests above the keyboard
+  fun keepClear(x: Int, restY: Int, row: Size, screen: Size, insetTopPx: Int, imeTopPx: Int?, rects: List<ClearRect>): Int?   // nearest clear top for bubble+pill, null when none
 }
+data class ClearRect(val left: Int, val top: Int, val width: Int, val height: Int)   // screen pixels, as getBoundsInScreen
 interface OverlayHost { fun add(view: View, x: Int, y: Int); fun move(x: Int, y: Int); fun remove(); val attached: Boolean }
 class WindowOverlayHost(context: Context) : OverlayHost                  // TYPE_APPLICATION_OVERLAY, FLAG_NOT_FOCUSABLE; needs SYSTEM_ALERT_WINDOW
 class AccessibilityOverlayHost(service: AccessibilityService) : OverlayHost   // TYPE_ACCESSIBILITY_OVERLAY, FLAG_NOT_FOCUSABLE
 class OverlayService : Service()                                         // foreground, type specialUse; owns a WindowOverlayHost
-interface BubbleControl { var spotKey: String; var imeTopPx: Int?; val events: Listeners<OverlayEvent>; fun show(mood: String); fun hide(); fun say(text: String, mood: String?, ms: Long, announce: Boolean = false); fun setMood(mood: String); fun setLabel(label: String?) }   // what drives the bubble's view; a fake in JVM tests
+interface BubbleControl { var spotKey: String; var imeTopPx: Int?; val events: Listeners<OverlayEvent>; fun show(mood: String); fun hide(); fun say(text: String, mood: String?, ms: Long, announce: Boolean = false); fun setMood(mood: String); fun setLabel(label: String?); fun keepClear(rects: List<ClearRect>) {} }   // what drives the bubble's view; a fake in JVM tests
 class Bubble(host: OverlayHost, spots: SpotStore, moods: (String) -> Drawable?, reducedMotion: () -> Boolean) : BubbleControl {
   fun show(mood: String); fun hide(); fun say(text: String, mood: String?, ms: Long, announce: Boolean = false); fun setMood(mood: String); fun setLabel(label: String?)
   val events: Listeners<OverlayEvent>                                    // listener set, never a single slot
@@ -757,6 +763,7 @@ class ServiceBubble(moods: (String) -> Drawable?, spots: SpotStore, reducedMotio
   fun start(config: Config); fun stop()
   fun say(text: String, mood: String? = null, ms: Long = 2500, announce: Boolean = false)
   fun setMood(mood: String); fun setLabel(label: String?); fun setRules(rules: Rules)
+  fun keepClear(rects: List<ClearRect>)                                  // kept until [] or stop(); dropped on an app, display or host change
   companion object { fun drawables(context: Context): (String) -> Drawable?; fun reducedMotion(context: Context): () -> Boolean }   // moods by drawable name; the system's animator scale
 }
 interface ForegroundApp { val current: String?; fun onChange(fn: (String?) -> Unit): () -> Unit }

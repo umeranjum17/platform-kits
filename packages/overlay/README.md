@@ -73,6 +73,29 @@ The bubble responds to TalkBack ACTION_CLICK and touch taps through the same cli
 It carries a TalkBack label (`label` in `start`, or `setLabel`, cleared with `null`), and
 `say(text, mood, ms, { announce: true })` reads the pill aloud.
 
+`keepClear(rects)` keeps the bubble and its pill off boxes the app names, such as the field it just wrote to and the
+send button beside it. Boxes are `{ left, top, width, height }` in full-display physical pixels with the origin at the
+top-left, the same space as an accessibility node's bounds in screen (multiply React Native layout values by the
+display density). The whole row, bubble plus pill at its measured size, moves up or down on its edge to the nearest
+clear spot below the status bar and above the keyboard, and follows the pill, the keyboard and rotations. The person's
+saved spot never changes: `keepClear([])` returns the bubble to it. The boxes are dropped on `stop()`, when the
+foreground app changes on the accessibility host, and when the display size changes, since they no longer describe
+the screen. When no clear spot is left the bubble stays at its saved spot rather than moving onto other text, and a
+`keepClear` event with `clear: false` tells the app (`clear: true` once it is clear again). Kotlin services call
+`ServiceBubble.keepClear(listOf(ClearRect(left, top, width, height)))`.
+
+```ts
+import { overlay } from '@platform-kits/overlay';
+
+const field = { left: 84, top: 1205, width: 986, height: 360 };   // e.g. the field's bounds in screen
+overlay.keepClear([field]);
+overlay.say('Inserted. Send it yourself.');
+const off = overlay.on('keepClear', (e) => { if (!e.clear) { /* say it somewhere else */ } });
+// Later, when the person moves on:
+overlay.keepClear([]);
+off();
+```
+
 A service that must show the bubble with no JS running (after a reboot or process death) drives it from Kotlin
 alone: keep a `ServiceBubble`, call `start(config)` in `onServiceConnected` with the persisted rules, and the bubble
 shows on attach and restores after every rebind. `Rules(app-rules).shows(app)` is the per-app decision in Kotlin;

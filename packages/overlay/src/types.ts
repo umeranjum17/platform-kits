@@ -22,7 +22,8 @@ export type OverlayEvent =
   | { type: 'longPress' }
   | { type: 'moved'; edge: Edge; y: number }        // y: 0–1 of the usable height
   | { type: 'state'; state: OverlayState }
-  | { type: 'panel'; open: boolean };
+  | { type: 'panel'; open: boolean }
+  | { type: 'keepClear'; clear: boolean };          // false: no clear spot left, so the bubble stays at its own spot
 export type OverlayEventType = OverlayEvent['type'];
 // State transitions (native side, reported by state() and the `state` event):
 // - 'off' before the first start() and after stop().
@@ -45,6 +46,8 @@ export type PointHereOptions = {
 };
 /** A box the point label keeps clear of: its top-left corner and size, in the same full-display physical pixels. */
 export type PointAvoid = { left: number; top: number; width: number; height: number };
+/** A box the bubble and its pill keep clear of: its top-left corner and size, in full-display physical pixels. */
+export type ClearRect = { left: number; top: number; width: number; height: number };
 export type PointHereResult = 'shown' | 'needs-permission' | 'not-running' | 'display-changed' | 'unsupported';
 export interface Overlay {
   state(): Promise<OverlayState>;
@@ -57,6 +60,7 @@ export interface Overlay {
   setMood(mood: string): void;
   setLabel(label: string | null): void;   // TalkBack label for the bubble; null clears it
   setRules(rules: AppRules): void;
+  keepClear(rects: ClearRect[]): void;   // up to 64; the bubble and pill move up or down off them; [] clears; the saved spot stays
   openPanel(props?: Record<string, string>): Promise<void>;
   closePanel(): Promise<void>;
   on<T extends OverlayEventType>(type: T, fn: (e: Extract<OverlayEvent, { type: T }>) => void): () => void;   // listener set
@@ -75,6 +79,7 @@ export interface NativeOverlay {                         // what the Kotlin modu
   setMood(mood: string): void;
   setLabel(label: string | null): void;
   setRules(rules: AppRules): void;
+  keepClear(rects: ClearRect[]): void;
   openPanel(props: Record<string, string>): Promise<void>;
   closePanel(): Promise<void>;
   logTap(app: string, action: string): Promise<void>;

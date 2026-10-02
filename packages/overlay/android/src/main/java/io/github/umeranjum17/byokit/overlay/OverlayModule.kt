@@ -13,6 +13,8 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
+import kotlin.math.ceil
+import kotlin.math.floor
 
 /** The JS foreground notice as a record. */
 class NoticeRecord : Record {
@@ -42,6 +44,14 @@ class StartRecord : Record {
   @Field val label: String = ""
 }
 
+/** A JS keepClear box: its top-left corner and size in full-display physical pixels. */
+class ClearRectRecord : Record {
+  @Field val left: Double = 0.0
+  @Field val top: Double = 0.0
+  @Field val width: Double = 0.0
+  @Field val height: Double = 0.0
+}
+
 /**
  * Expo module 'ByokitOverlay': the NativeOverlay seam (docs/capability-kits.md 7.3, 7.5). It runs the state machine
  * of 7.3 over the host a start picks, and turns bubble, host and panel changes into 'overlay' events.
@@ -56,6 +66,7 @@ class OverlayModule : Module() {
   private var host: OverlayHost? = null
   private var point: PointMarker? = null
   private var rules: RulesRecord? = null
+  private var rects = emptyList<ClearRect>()
   // The foreground app (accessibility host) and what watches it and the keyboard while the bubble is on.
   private var app: String? = null
   private val watching = mutableListOf<() -> Unit>()
@@ -114,6 +125,14 @@ class OverlayModule : Module() {
     Function("setLabel") { label: String? ->
       main.post { this@OverlayModule.label = label ?: ""; bubble?.setLabel(label) }
     }
+    Function("keepClear") { r: List<ClearRectRecord> ->
+      // Rounded outwards, so a fractional box is never cut short.
+      val clear = r.map {
+        val l = floor(it.left).toInt(); val t = floor(it.top).toInt()
+        ClearRect(l, t, ceil(it.left + it.width).toInt() - l, ceil(it.top + it.height).toInt() - t)
+      }
+      main.post { keepClear(clear) }
+    }
     // Applied over the foreground app on the accessibility host; start() rejects rules for 'window'.
     Function("setRules") { r: RulesRecord -> main.post { rules = r; refresh() } }
     // Rejects through the promise: a thrown error reaches JS wrapped in Expo's own message.
@@ -161,6 +180,7 @@ class OverlayModule : Module() {
     b.events.add(::bubbleEvent)
     bubble = b
     b.setLabel(label.takeIf { it.isNotEmpty() })
+    b.keepClear(rects)
     watchKeyboard()
     val foreground = ByokitAccessibility.foreground
     if (o.host == "accessibility" && foreground != null) { app = foreground.current; watching += foreground.onChange(::appChanged) }
@@ -182,11 +202,18 @@ class OverlayModule : Module() {
   private fun appChanged(now: String?) {
     // A window change can briefly have no app, and the panel is the app's own window over the app it opened from.
     if (now == null || (panelOpen && now == context.packageName)) return
+    if (now != app && rects.isNotEmpty()) keepClear(emptyList()) // they were measured over the app it left
     app = now
     val b = bubble ?: return
     val key = SpotStore.key(options?.spots == "per-app", now)
     if (key != b.spotKey) { b.hide(); b.spotKey = key } // shown again below, at this app's spot
     refresh()
+  }
+
+  /** Kept until cleared, stop() or a change of foreground app or host; the bubble drops them on a display change. */
+  private fun keepClear(clear: List<ClearRect>) {
+    rects = clear
+    bubble?.keepClear(clear)
   }
 
   /** The bubble shows unless the open panel hides it or, on the accessibility host, the rules hide it over this app. */
@@ -222,6 +249,7 @@ class OverlayModule : Module() {
     }
     if (state != "on" || host == null) return
     unwatch()
+    rects = emptyList()
     point?.dismiss(); point = null
     bubble?.hide()
     bubble = null
@@ -233,6 +261,7 @@ class OverlayModule : Module() {
     val starting = pending
     pending = null
     unwatch()
+    rects = emptyList()
     point?.dismiss(); point = null
     bubble?.hide()
     bubble = null
@@ -253,6 +282,7 @@ class OverlayModule : Module() {
       }
       is OverlayEvent.LongPress -> emit(mapOf("type" to "longPress"))
       is OverlayEvent.Moved -> emit(mapOf("type" to "moved", "edge" to e.spot.edge.name.lowercase(), "y" to e.spot.y.toDouble()))
+      is OverlayEvent.KeepClear -> emit(mapOf("type" to "keepClear", "clear" to e.clear))
       else -> {}
     }
   }

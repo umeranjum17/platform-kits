@@ -23,6 +23,8 @@ class ServiceBubbleTest {
     }
     override fun setMood(mood: String) { moods += mood }
     override fun setLabel(label: String?) { labels += label }
+    val kept = mutableListOf<List<ClearRect>>()
+    override fun keepClear(rects: List<ClearRect>) { kept += rects }
   }
 
   private class FakeHost : OverlayHost {
@@ -238,5 +240,34 @@ class ServiceBubbleTest {
     s.start(ServiceBubble.Config(mood = "calm", rules = Rules(paused = true), perAppSpots = true))
     assertEquals(listOf("calm"), made.single().shown)
     assertEquals(SpotStore.GLOBAL, made.single().spotKey)
+  }
+
+  @Test fun keepClearIsKeptAcrossShowsAndDroppedWhenTheScreenItDescribesGoes() {
+    attached = host
+    val s = service()
+    s.start(ServiceBubble.Config(mood = "calm", rules = Rules(on = listOf("com.app", "com.b"))))
+    val field = listOf(ClearRect(84, 1205, 986, 360), ClearRect(950, 1580, 120, 120))
+    s.keepClear(field)
+    assertEquals(listOf(emptyList(), field), made.single().kept)
+    val seen = mutableListOf<OverlayEvent>()
+    s.events.add(seen::add)
+    made.single().events.emit(OverlayEvent.KeepClear(false))
+    assertEquals(listOf<OverlayEvent>(OverlayEvent.KeepClear(false)), seen)
+    // Hidden and shown again by the panel, the same bubble keeps them; the panel's own app changes nothing.
+    openPanel = "com.own"; panels.emit(true)
+    foreground.now = "com.own"; foreground.emit("com.own")
+    foreground.now = "com.app"; openPanel = null; panels.emit(false)
+    assertEquals(listOf(emptyList(), field), made.single().kept)
+    // Another app: they were measured over the one it left.
+    foreground.now = "com.b"; foreground.emit("com.b")
+    assertEquals(listOf(emptyList(), field, emptyList()), made.single().kept)
+    // A rebind restores them on the new bubble only while the host stays; a lost host drops them.
+    s.keepClear(field)
+    hosts.emit(null); hosts.emit(host)
+    assertEquals(emptyList<ClearRect>(), made.last().kept.last())
+    s.keepClear(field)
+    s.stop()
+    s.start(ServiceBubble.Config(mood = "calm", rules = Rules(on = listOf("com.app", "com.b"))))
+    assertEquals(listOf(emptyList<ClearRect>()), made.last().kept)
   }
 }

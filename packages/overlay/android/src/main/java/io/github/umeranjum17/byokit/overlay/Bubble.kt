@@ -38,6 +38,10 @@ class Bubble(
   /** The keyboard's top in screen pixels while it is open; the bubble rests above it and returns when it closes. */
   override var imeTopPx: Int? = null
     set(v) { if (field == v) return; field = v; if (host.attached) place() }
+  private var rects = emptyList<ClearRect>()
+  // The screen the rects were measured on; a rotation or display change makes them stale, so they are dropped.
+  private var rectsScreen: Size? = null
+  private var clear = true
 
   private val main = Handler(Looper.getMainLooper())
   private var mood: String? = null
@@ -64,10 +68,9 @@ class Bubble(
     spot = spots.get(spotKey) ?: spot
     build(context)
     image?.setImageDrawable(moods(mood))
-    val (px, py) = pixels()
+    val (px, py) = target()!!
     x = px; y = py
     host.add(row!!, x, y)
-    place() // a pill left visible while hidden shifts the row on the right edge
     context.registerComponentCallbacks(config)
   }
 
@@ -98,6 +101,17 @@ class Bubble(
   override fun setMood(mood: String) {
     this.mood = mood
     image?.setImageDrawable(moods(mood))
+  }
+
+  /**
+   * Keeps the bubble and its pill off [rects] (screen pixels, see [ClearRect]) by moving them up or down on their edge,
+   * to the nearest clear spot above the keyboard; the remembered spot stays, and an empty list returns them to it.
+   * With no clear spot they stay at the remembered spot and [OverlayEvent.KeepClear] says they cover a rect.
+   */
+  override fun keepClear(rects: List<ClearRect>) {
+    this.rects = rects
+    rectsScreen = if (rects.isNotEmpty() && viewContext() != null) screen().first else null
+    if (host.attached) place()
   }
 
   /** The TalkBack label for the bubble; null clears it back to no label. */
@@ -157,25 +171,37 @@ class Bubble(
     if (spot.edge == Edge.LEFT) { r.addView(image); r.addView(pill) } else { r.addView(pill); r.addView(image) }
   }
 
-  /** Where the whole row goes: the bubble at its spot, the row shifted left by the pill's width on the right edge. */
+  /** Moves the whole row to its [target] now. */
   private fun place() {
     glide?.cancel()
-    val (px, py) = pixels()
-    val p = pill ?: return
-    val shift = if (spot.edge == Edge.RIGHT && p.visibility == View.VISIBLE) {
-      p.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-      p.measuredWidth + dp(p.context, 6f)
-    } else 0
-    x = px - shift; y = py
+    val (tx, ty) = target() ?: return
+    x = tx; y = ty
     host.move(x, y)
   }
 
-  private fun bubbleSize(): Size = image?.let { Size(it.layoutParams.width, it.layoutParams.height) } ?: Size(0, 0)
-
-  private fun pixels(): Pair<Int, Int> {
+  /**
+   * Where the whole row goes: the bubble at its spot, the row shifted left by the pill's width on the right edge, then
+   * up or down off the [rects] when they are set. Reports a change in whether the row is clear of them.
+   */
+  private fun target(): Pair<Int, Int>? {
+    val p = pill ?: return null
     val (screen, top) = screen()
-    return Placement.toPixels(spot, screen, bubbleSize(), top, imeTopPx)
+    val b = bubbleSize()
+    val (px, py) = Placement.toPixels(spot, screen, b, top, imeTopPx)
+    val gap = dp(p.context, 6f)
+    val said = if (p.visibility == View.VISIBLE) {
+      p.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+      Size(p.measuredWidth + gap, p.measuredHeight)
+    } else Size(0, 0)
+    val rx = if (spot.edge == Edge.RIGHT) px - said.w else px
+    if (rects.isNotEmpty() && rectsScreen == null) rectsScreen = screen
+    if (rectsScreen != null && rectsScreen != screen) { rects = emptyList(); rectsScreen = null }
+    val ry = Placement.keepClear(rx, py, Size(b.w + said.w, maxOf(b.h, said.h)), screen, top, imeTopPx, rects)
+    if (clear != (ry != null)) { clear = ry != null; events.emit(OverlayEvent.KeepClear(clear)) }
+    return rx to (ry ?: py)
   }
+
+  private fun bubbleSize(): Size = image?.let { Size(it.layoutParams.width, it.layoutParams.height) } ?: Size(0, 0)
 
   /** The screen size and the status bar's height, from the host's window manager. */
   private fun screen(): Pair<Size, Int> {
@@ -197,7 +223,7 @@ class Bubble(
     spots.put(spotKey, to)
     events.emit(OverlayEvent.Moved(to))
     if (edgeChanged) arrange()
-    val (px, py) = pixels()
+    val (px, py) = target() ?: return
     if (reducedMotion() || pill?.visibility == View.VISIBLE) { place(); return }
     val fromX = x; val fromY = y
     glide = ValueAnimator.ofFloat(0f, 1f).apply {

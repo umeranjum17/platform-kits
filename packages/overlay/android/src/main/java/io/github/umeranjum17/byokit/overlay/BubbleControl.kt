@@ -10,6 +10,8 @@ interface BubbleControl {
   fun hide()
   fun say(text: String, mood: String?, ms: Long, announce: Boolean = false)
   fun setMood(mood: String)
+  /** Keeps the bubble and its pill off [rects]; an empty list clears them (see [Bubble.keepClear]). */
+  fun keepClear(rects: List<ClearRect>) {}
   /** The TalkBack label; null clears it back to no label. */
   fun setLabel(label: String?)
 }

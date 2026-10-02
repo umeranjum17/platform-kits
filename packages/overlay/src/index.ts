@@ -4,7 +4,7 @@ import { createOverlay } from './overlay.ts';
 
 export type {
   AppRules, Edge, ForegroundNotice, HostKind, NativeOverlay, Overlay, OverlayEvent, OverlayEventType, OverlayState,
-  StartOptions, TapEntry, PointHereOptions, PointHereResult, PointAvoid,
+  StartOptions, TapEntry, PointHereOptions, PointHereResult, PointAvoid, ClearRect,
 } from './types.ts';
 export { resetApp, setApp, shownFor } from './rules.ts';
 export { createOverlay } from './overlay.ts';

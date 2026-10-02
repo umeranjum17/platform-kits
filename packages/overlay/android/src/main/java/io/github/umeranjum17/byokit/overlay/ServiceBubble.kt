@@ -71,6 +71,7 @@ class ServiceBubble(
   private var panelOpen = false
   // The person switched to another app with the panel still open, so it no longer covers the bubble.
   private var leftPanel = false
+  private var rects = emptyList<ClearRect>()
   private val watching = mutableListOf<() -> Unit>()
   private var unhost: (() -> Unit)? = null
   private var unpanel: (() -> Unit)? = null
@@ -93,6 +94,7 @@ class ServiceBubble(
     unpanel = null
     panelOpen = false
     leftPanel = false
+    rects = emptyList()
     unwatch()
     bubble?.hide()
     bubble = null
@@ -103,6 +105,17 @@ class ServiceBubble(
   /** A pill next to the bubble for [ms], with [mood] meanwhile; [announce] reads it aloud to TalkBack. */
   fun say(text: String, mood: String? = null, ms: Long = 2500, announce: Boolean = false) {
     bubble?.say(text, mood, ms, announce)
+  }
+
+  /**
+   * Keeps the bubble and its pill off [rects] in screen pixels, such as the field just written to and its send button,
+   * kept for later shows until an empty list clears them or [stop]; the remembered spot is never changed. [events]
+   * reports [OverlayEvent.KeepClear] false when no clear spot is left. They are dropped when the foreground app, the
+   * display size or the host changes, since they no longer describe that screen.
+   */
+  fun keepClear(rects: List<ClearRect>) {
+    this.rects = rects
+    bubble?.keepClear(rects)
   }
 
   /** The resting mood, kept for later shows. */
@@ -132,6 +145,7 @@ class ServiceBubble(
     watch()
     b.spotKey = SpotStore.key(c.perAppSpots, app)
     b.setLabel(c.label)
+    b.keepClear(rects)
     refresh()
   }
 
@@ -155,6 +169,7 @@ class ServiceBubble(
       leftPanel = now != panelApp()
       if (!leftPanel) return refresh()
     }
+    if (now != app && rects.isNotEmpty()) keepClear(emptyList()) // they were measured over the app it left
     app = now
     val b = bubble ?: return
     val key = SpotStore.key(config?.perAppSpots == true, now)
@@ -193,6 +208,7 @@ class ServiceBubble(
       if (host == null) show(h) // a rebind restores the bubble with the remembered config
     } else {
       unwatch()
+      rects = emptyList()
       bubble?.hide()
       bubble = null
       host = null

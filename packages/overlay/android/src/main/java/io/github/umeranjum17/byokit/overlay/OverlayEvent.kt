@@ -12,6 +12,8 @@ sealed class OverlayEvent {
   data class Moved(val spot: Spot) : OverlayEvent()
   /** The JS module's state changed ('on', 'off', 'stuck', 'needs-permission'). */
   data class State(val state: String) : OverlayEvent()
+  /** Whether the bubble and its pill are clear of the keepClear rects changed; false when no clear spot was left. */
+  data class KeepClear(val clear: Boolean) : OverlayEvent()
   /** The panel opened or closed. */
   data class Panel(val open: Boolean) : OverlayEvent()
 }

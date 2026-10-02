@@ -65,10 +65,10 @@ test('recorder page: repeated Start presses during the countdown send one start 
   });
 });
 
-test('recorder page: a start refused because another recording is running shows that recording, not a failure', { skip: !chrome, timeout: 30_000 }, async () => {
+test('recorder page: a start refused because another window started recording during the countdown shows that recording', { skip: !chrome, timeout: 30_000 }, async () => {
   await recorderPage(async (page, url, starts) => {
-    assert.equal((await fetch(url + 'start', { method: 'POST', body: '{"screen":":5.0"}' })).status, 202);
     await page.getByRole('button', { name: 'Start recording' }).click();
+    assert.equal((await fetch(url + 'start', { method: 'POST', body: '{"screen":":5.0"}' })).status, 202);
     const refused = await page.waitForResponse(r => r.url().endsWith('/start'));
     assert.equal(refused.status(), 409);
     await recordingCard(page);

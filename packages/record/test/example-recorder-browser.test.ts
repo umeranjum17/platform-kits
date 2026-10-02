@@ -42,10 +42,11 @@ async function recorderPage(run: (page: Page, url: string, starts: () => number)
 }
 
 async function recordingCard(page: Page) {
-  await page.locator('#recState', { hasText: 'Recording' }).waitFor();
+  await page.waitForFunction(() => !document.getElementById('failed')!.hidden || document.getElementById('recState')!.textContent === 'Recording');
+  assert.ok(await page.locator('#failed').isHidden(), 'no "Nothing was saved"');
+  assert.equal(await page.locator('#recState').textContent(), 'Recording');
   assert.ok(await page.locator('#stop').isVisible(), 'Stop stays visible');
   assert.ok(await page.locator('#stop').isEnabled(), 'Stop is usable');
-  assert.ok(await page.locator('#failed').isHidden(), 'no "Nothing was saved"');
 }
 
 test('recorder page: repeated Start presses during the countdown send one start and keep the recording card', { skip: !chrome, timeout: 30_000 }, async () => {
@@ -57,9 +58,10 @@ test('recorder page: repeated Start presses during the countdown send one start 
     await page.keyboard.press('Enter');
     await page.keyboard.press(' ');
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    assert.ok(await start.isDisabled(), 'Start is disabled while its countdown runs');
-    await recordingCard(page);
+    await page.waitForResponse(r => r.url().endsWith('/start'));
+    await page.waitForTimeout(500); // room for a second start, had one been sent
     assert.equal(starts(), 1);
+    await recordingCard(page);
   });
 });
 

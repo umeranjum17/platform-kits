@@ -85,6 +85,7 @@ jobs:
           PLATFORM_KITS_CHROME="$(node --input-type=module -e 'import { chromium } from "playwright"; console.log(chromium.executablePath())')"
           export PLATFORM_KITS_CHROME
           npm run test:browser
+          sh scripts/test.sh packages/record/test/example-recorder-browser.test.ts
       - name: Clean private scratch
         if: always()
         run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac

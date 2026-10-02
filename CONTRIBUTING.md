@@ -23,7 +23,8 @@ helpers live in `test-support/` as test support, with no production dependency o
 
 For socket tests, export `TMPDIR=$(mktemp -d /tmp/bk-XXXX)` and remove only that directory afterwards.
 Real recorder CI runs `sh scripts/test.sh packages/record/test/real/smoke.test.ts` with ffmpeg and Xvfb installed.
-Browser CI installs Chromium and passes `PLATFORM_KITS_CHROME` to `npm run test:browser`. Ordinary tests need no
+Browser CI installs Chromium and passes `PLATFORM_KITS_CHROME` to `npm run test:browser` and the recorder page test
+(`packages/record/test/example-recorder-browser.test.ts`). Ordinary tests need no
 browser binary, account, network or model.
 
 The Expo example has only platform demos: `npm ci`, `npm run typecheck`, `npm run bundle` in `examples/expo`.

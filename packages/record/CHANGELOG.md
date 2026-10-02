@@ -5,6 +5,9 @@
 - FIX: the desktop recorder example (`examples/recorder`) opens the recording card, with its screen and a working Stop,
   in a reloaded page or a second window while a recording is starting, running or saving. Before, those pages stayed
   on the screen picker with Stop hidden.
+- FIX: the desktop recorder example sends one start per Start press. Pressing Start again (or Enter or Space) during the
+  countdown is ignored, and a start refused because a recording is already running keeps the recording card and its
+  Stop instead of showing "Nothing was saved".
 
 ## 0.2.1 (2026-10-02)
 

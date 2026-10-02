@@ -134,7 +134,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const views = ['pick', 'rec', 'saved', 'failed'];
-let screens = [], chosen = null, saved = null, ticker = 0;
+let screens = [], chosen = null, saved = null, ticker = 0, starting = false, last = null;
 
 // The page lives in a small app window: it sizes itself for each step and the recording card sits in a corner.
 const SIZES = { pick: [800, 520], card: [380, 100], saved: [800, 680], failed: [560, 260] };
@@ -161,23 +161,31 @@ async function loadScreens() {
     b.onclick = () => {
       chosen = s;
       for (const c of $('screens').children) c.setAttribute('aria-checked', String(c === b));
-      $('start').disabled = false;
+      $('start').disabled = starting;
     };
     return b;
   }));
   if (!screens.length) $('screens').textContent = 'No screen can be recorded from this session.';
 }
 
+// One Start at a time: a second press or Enter during the countdown is ignored rather than sending another start.
 $('start').onclick = async () => {
+  if (starting) return;
+  starting = true; $('start').disabled = true;
+  const screen = chosen;
   $('count').hidden = false;
   for (const n of [3, 2, 1]) { $('countN').textContent = n; await new Promise((r) => setTimeout(r, 800)); }
   $('count').hidden = true;
   $('recState').textContent = 'Starting…'; $('time').textContent = '0:00'; $('stop').disabled = true;
-  $('recWhere').textContent = `${chosen.name} · ${chosen.width} × ${chosen.height}`;
+  $('recWhere').textContent = `${screen.name} · ${screen.width} × ${screen.height}`;
   frame('card'); show('rec');
   await new Promise((r) => setTimeout(r, 250)); // let the window settle before the first frame
-  const res = await fetch('start', { method: 'POST', body: JSON.stringify({ screen: chosen.id }) });
-  if (!res.ok) fail(await res.text());
+  try {
+    const res = await fetch('start', { method: 'POST', body: JSON.stringify({ screen: screen.id }) });
+    // 409: a recording is already running. Show it with its Stop rather than "Nothing was saved".
+    if (res.status === 409) { if (last) apply(last); }
+    else if (!res.ok) fail(await res.text());
+  } finally { starting = false; }
 };
 $('stop').onclick = () => {
   clearInterval(ticker); $('stop').disabled = true; $('pulse').hidden = true;
@@ -237,7 +245,7 @@ $('video').addEventListener('dragstart', (e) => {
   e.dataTransfer.setData('DownloadURL', `video/mp4:${saved.name}:${new URL('video', location.href)}`);
 });
 
-new EventSource('events').onmessage = (m) => apply(JSON.parse(m.data));
+new EventSource('events').onmessage = (m) => apply(last = JSON.parse(m.data));
 frame('pick'); show('pick'); loadScreens();
 </script>
 </body>

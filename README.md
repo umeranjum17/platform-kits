@@ -27,7 +27,8 @@ npm run smoke:pack
 
 Tests use a throwaway HOME, fake backends and an outbound-network guard. Real browser and recorder CI use an
 explicit Chromium binary and a private Xvfb display. Native tests use disposable emulators, never a person's phone.
-The [Expo example](examples/expo) demonstrates overlay and statusbar; AI demos remain in BYOKit.
+The [Expo example](examples/expo) demonstrates overlay and statusbar, and the [desktop recorder](examples/recorder)
+demonstrates record. AI demos remain in BYOKit.
 
 See [contributing](CONTRIBUTING.md), the [capability contracts](docs/capability-kits.md), and
 [extraction provenance](docs/history/README.md). Release tooling publishes only from merged main with passing CI.

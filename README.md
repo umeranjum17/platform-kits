@@ -10,10 +10,11 @@ BYOKit remains the home for AI accounts, decisions and runtime integrations. Thi
 | [@platform-kits/record](packages/record) | 0.2.0 | Screen recording and video through recorder protocol v1 |
 | [@platform-kits/speak](packages/speak) | 0.1.0, private | Platform text-to-speech |
 | [@platform-kits/browser](packages/browser) | 0.1.0 | Isolated Chromium screenshots of URLs or local HTML |
+| [@platform-kits/social](packages/social) | 0.1.0, private, new | Draft, approve and post to your own social accounts |
 
 The split retains the package APIs and native module identities. New package names use the `@platform-kits` npm
-scope; speak stays `private: true`. Existing `@byokit/*` releases stay available. Consumer migration, deprecation
-and removal from BYOKit are separate work.
+scope; speak and the new social kit stay `private: true`. Existing `@byokit/*` releases stay available. Consumer
+migration, deprecation and removal from BYOKit are separate work.
 
 ```sh
 npm ci

@@ -70,8 +70,7 @@ expect 'No clear spot: the bubble stays put.'
 shot keep-clear-3-no-space
 set -- $saved; top=$2; set -- $(bubble)
 [ "$2" = "$top" ] || { echo "with no clear spot the bubble moved ($top, now $2)" >&2; exit 1; }
-tap keepClearOff
-expect 'Back at its own spot.'
+tap keepClearOff # its keepClear event (clear: true) can replace the status text, so check the position instead
 shot keep-clear-4-cleared
 set -- $saved; top=$2; set -- $(bubble)
 [ "$2" = "$top" ] || { echo "the bubble did not return to its saved spot ($top, now $2)" >&2; exit 1; }

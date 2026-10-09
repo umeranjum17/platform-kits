@@ -189,7 +189,7 @@ jobs:
           disable-animations: true
           script: cd examples/expo/android && ./gradlew :platform-kits-overlay:connectedDebugAndroidTest :a11y-demo:connectedDebugAndroidTest -PreactNativeArchitectures=x86_64 && cd .. && ./e2e-screen-frame.sh emulator-5554 .screen-captures
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: byokit-screen-proof
           # Only these task-owned captures/diagnostics; hidden files elsewhere stay excluded.
@@ -201,7 +201,7 @@ jobs:
             examples/expo/.screen-captures/timeout-windows.txt
             examples/expo/.screen-captures/timeout-logcat.txt
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: overlay-webview-test-reports
           path: examples/expo/modules/a11y-demo/android/build/outputs/androidTest-results/

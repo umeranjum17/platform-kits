@@ -18,6 +18,6 @@
   },
   "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
   "scripts": { "prepack": "tsc -b" },
-  "dependencies": { "@atproto/oauth-client": "0.8.8" },
+  "dependencies": { "@atproto/oauth-client": "0.8.9" },
   "publishConfig": { "access": "public" }
 }

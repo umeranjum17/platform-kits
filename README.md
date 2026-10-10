@@ -3,17 +3,19 @@
 Generic, non-AI platform capabilities split from [BYOKit](https://github.com/umeranjum17/byokit).
 BYOKit remains the home for AI accounts, decisions and runtime integrations. This public repository is Apache-2.0.
 
-| Package | Version at the cut | Capability |
+| Package | Latest version | Capability |
 |---|---|---|
-| [@platform-kits/overlay](packages/overlay) | 0.3.0 | Android bubble, panel, focused field, screen frames and point markers |
-| [@platform-kits/statusbar](packages/statusbar) | 0.1.1 | Android status-bar chip with actions and a lock-screen copy |
-| [@platform-kits/record](packages/record) | 0.2.0 | Screen recording and video through recorder protocol v1 |
+| [@platform-kits/overlay](packages/overlay) | 0.3.2 | Android bubble, panel, focused field, screen frames and point markers |
+| [@platform-kits/statusbar](packages/statusbar) | 0.1.2 | Android status-bar chip with actions and a lock-screen copy |
+| [@platform-kits/record](packages/record) | 0.2.1 | Screen recording and video through recorder protocol v1 |
 | [@platform-kits/speak](packages/speak) | 0.1.0, private | Platform text-to-speech |
-| [@platform-kits/browser](packages/browser) | 0.1.0 | Isolated Chromium screenshots of URLs or local HTML |
-| [@platform-kits/social](packages/social) | 0.1.0, private, new | Draft, approve and post to your own social accounts |
+| [@platform-kits/browser](packages/browser) | 0.1.1 | Isolated Chromium screenshots of URLs or local HTML |
+| [@platform-kits/social](packages/social) | 0.1.0, private | Draft, approve and post to your own social accounts |
+
+Each version column matches the `version` in that package's `package.json` on `main`.
 
 The split retains the package APIs and native module identities. New package names use the `@platform-kits` npm
-scope; speak and the new social kit stay `private: true`. Existing `@byokit/*` releases stay available. Consumer
+scope; speak and the social kit stay `private: true`. Existing `@byokit/*` releases stay available. Consumer
 migration, deprecation and removal from BYOKit are separate work.
 
 ```sh

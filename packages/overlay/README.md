@@ -81,8 +81,9 @@ clear spot below the status bar and above the keyboard, and follows the pill, th
 saved spot never changes: `keepClear([])` returns the bubble to it. The boxes are dropped on `stop()`, when the
 foreground app changes on the accessibility host, and when the display size changes, since they no longer describe
 the screen. When no clear spot is left the bubble stays at its saved spot rather than moving onto other text, and a
-`keepClear` event with `clear: false` tells the app (`clear: true` once it is clear again). Kotlin services call
-`ServiceBubble.keepClear(listOf(ClearRect(left, top, width, height)))`.
+`keepClear` event with `clear: false` tells the app (`clear: true` once it is clear again). At most 64 boxes, with
+finite edges and non-negative sizes, or it throws `Error('overlay: keepClear …')` before any native call. Kotlin
+services call `ServiceBubble.keepClear(listOf(ClearRect(left, top, width, height)))`.
 
 ```ts
 import { overlay } from '@platform-kits/overlay';
@@ -149,7 +150,7 @@ by the caller and must stay alive until the insert returns. `FieldNode.of(node, 
 `FocusedFields.capture(service)` does the same capture as a `FieldNode`. An app's own foreground service shows the
 bubble with `ServiceBubble(WindowOverlayHost(this), moods, spots)`, which takes no rules and shows everywhere.
 
-**Status: ready to publish (BK-O3).** The bubble, both hosts, the panel, the tap log and the focused field are built
+**Status: published (BK-O3).** The bubble, both hosts, the panel, the tap log and the focused field are built
 and proven on an Android emulator (API 36). On iOS, the web and Node `overlay.state()` is `unsupported`.
 
 ## One screen picture and a point marker
@@ -216,5 +217,5 @@ Android's pass-through limit (0.8). The bubble keeps its own existing touch beha
 native teardown and host loss remove the marker. Auto-dismiss uses elapsed time, with no animation.
 
 For an account-free emulator demo and repeatable consent/marker proof, build the Expo example with
-`EXPO_PUBLIC_SCREEN_DEMO=1` and run `examples/expo/e2e-screen-frame.sh <emulator-serial>`. Its two PNG captures are
-uploaded by the Android CI job and linked in the pull request.
+`EXPO_PUBLIC_SCREEN_DEMO=1` and run `examples/expo/e2e-screen-frame.sh <emulator-serial>`. It captures the consent
+dialog, the marker and a five-place tour; the Android CI job uploads those PNGs as the `byokit-screen-proof` artifact.

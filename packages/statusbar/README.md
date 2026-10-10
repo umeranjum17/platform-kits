@@ -24,6 +24,11 @@ Add the config plugin to `app.json`: `"@platform-kits/statusbar"`. It adds `POST
 The library's manifest brings `POST_NOTIFICATIONS`; the app asks for that one itself (for example with
 `PermissionsAndroid`) and shows `stateWords('needs-permission')` until it is granted.
 
+`show()` checks its options on every platform before any native call and throws `Error('status: <what>')` on a bad
+one: `title` must be non-empty, `chip` at most 7 characters, `timeoutMs` an integer of at least 1000, at most three
+`actions` with unique `^[a-z][a-z0-9_]{0,31}$` ids and non-empty labels, and `icon` (when passed) an app drawable
+name matching `^[a-z][a-z0-9_]{0,63}$`.
+
 - **Keep calling `show()`** from the app's own refresh. An unchanged call posts nothing, except that once half of
   `timeoutMs` has passed it posts again to keep the chip. A dead app's chip clears itself after `timeoutMs`.
 - **Posts are throttled** to one per 1.5 s; the latest options win.
@@ -31,6 +36,6 @@ The library's manifest brings `POST_NOTIFICATIONS`; the app asks for that one it
   access to app features. Call `clear()` when the work ends.
 - There is no foreground service: keeping the app alive is the app's business.
 
-**Status: ready to publish (BK-S1).** Proven on Android emulators: the chip, the lock-screen copy, three actions and a
+**Status: published (BK-S1).** Proven on Android emulators: the chip, the lock-screen copy, three actions and a
 dismissal that sticks on API 36.1; `unsupported` on API 35. Android 16 before QPR2 (API 36.0) has no chip:
 `state()` is `off` and the post is a plain ongoing notification.

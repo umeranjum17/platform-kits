@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Correct the README: the kit is private and not on npm, so it no longer shows an `npm install` line.
 - Add the social kit: connect your own accounts, draft, check, approve, schedule and post. Nothing reaches a
   network without an approval bound to a SHA-256 digest of the exact payload; approvals are single-use, any edit
   voids them, and a late scheduled approval fails as stale instead of publishing.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Correct the README: the kit is published, and the `show()` option checks and `timeoutMs` floor are documented.
+
 ## 0.1.2 (2026-10-02)
 
 

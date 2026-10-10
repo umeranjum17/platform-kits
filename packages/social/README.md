@@ -15,9 +15,7 @@ end to end against a local Bluesky PDS and a local Mastodon; a proof on the live
 For now posting stays manual: a person approves and sends each post. The kit is not published to npm and is not
 wired to post automatically anywhere; automated posting, including the scheduler loop below, is a later look.
 
-```sh
-npm install @platform-kits/social
-```
+This kit is `private: true`, so it is not on npm; build it from this repository. Consumers import it by its name.
 
 ```ts
 import { Social, blueskyProvider, mastodonProvider, hackerNewsHandoff, xProvider, type Keystore } from '@platform-kits/social';

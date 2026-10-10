@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Correct the README: the kit is published, the screen-frame e2e proof names its consent, marker and five-place
+  tour captures, and `keepClear`'s 64-box limit is documented.
+
 ## 0.3.2 (2026-10-02)
 
 

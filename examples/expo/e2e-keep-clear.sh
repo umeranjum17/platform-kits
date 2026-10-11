@@ -45,7 +45,7 @@ else: raise SystemExit("no bubble window (see windows.txt)")' "$captures/windows
 overlap() { python3 -c 'import sys;a=list(map(int,sys.argv[1:5]));b=list(map(int,sys.argv[5:9]));print(max(0,min(a[2],b[2])-max(a[0],b[0]))*max(0,min(a[3],b[3])-max(a[1],b[1])))' "$@"; }
 shot() { sleep 1; a exec-out screencap -p > "$captures/$1.png"; f=$(bounds fieldInput); w=$(bubble); echo "$1 field=[$f] bubble=[$w] overlap=$(overlap $f $w)" | tee -a "$captures/boxes.txt"; }
 : > "$captures/boxes.txt"
-expect 'Platform kits on android'
+expect 'Umer'
 tap bubbleStart
 expect 'Stop the bubble'
 tap fieldInput

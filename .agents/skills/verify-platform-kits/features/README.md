@@ -42,6 +42,9 @@ Read this index before driving, then use the matching feature file as the recipe
   disposable emulator.
 - [overlay-focused-field](./overlay-focused-field.md) — the focused WebView field's read, capture, insert and
   `focusedNode`. **Emulator-only**; unproved until `:a11y-demo:connectedDebugAndroidTest` runs on a disposable emulator.
+- [overlay-panel](./overlay-panel.md) — the bubble's tap panel shows the focused app and the complete field text,
+  wrapped and untruncated, with a reachable Close; honest when nothing is focused. **Emulator-only**; the phone proof
+  is unproved until `examples/expo/e2e-panel.sh <emulator-serial>` runs on a disposable emulator.
 
 ## Not provable on this host (declare honestly, do not fake)
 
@@ -69,3 +72,5 @@ in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`
   moves and dismisses, and the five-step tour visits every edge (emulator-only).
 - [overlay-focused-field](./overlay-focused-field.md) — the focused WebView field is read, captured, inserted into
   and returned by `focusedNode`, following focus between fields; passwords and no focus give nothing (emulator-only).
+- [overlay-panel](./overlay-panel.md) — the bubble's tap panel shows the focused app and the complete field text,
+  wrapped and untruncated, with a reachable Close; honest when nothing is focused (emulator-only).

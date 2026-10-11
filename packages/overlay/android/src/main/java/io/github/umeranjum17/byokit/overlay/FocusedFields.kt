@@ -450,6 +450,8 @@ internal class NodeWrap(
   @Suppress("DEPRECATION")
   private fun focusedDescendant(root: AccessibilityNodeInfo, input: Boolean): AccessibilityNodeInfo? {
     var remaining = 2048
+    fun focused(n: AccessibilityNodeInfo) =
+      (if (input) n.isFocused else n.isAccessibilityFocused) && (n.isEditable || n.isPassword)
     fun visit(parent: AccessibilityNodeInfo, depth: Int): AccessibilityNodeInfo? {
       if (depth >= 64) return null
       for (i in 0 until parent.childCount) {
@@ -457,7 +459,8 @@ internal class NodeWrap(
         val child = parent.getChild(i) ?: continue
         var found: AccessibilityNodeInfo? = null
         try {
-          if ((if (input) child.isFocused else child.isAccessibilityFocused) && (child.isEditable || child.isPassword)) {
+          // A cached child snapshot can keep the previous field's focus flag; refresh a candidate before trusting it.
+          if (focused(child) && child.refresh() && focused(child)) {
             found = child
           } else found = visit(child, depth + 1)
           if (found != null) return found

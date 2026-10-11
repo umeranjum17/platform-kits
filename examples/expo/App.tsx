@@ -2,10 +2,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dimensions, PermissionsAndroid, PixelRatio, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { overlay, stateWords, type OverlayState } from '@platform-kits/overlay';
-import { focusedField } from '@platform-kits/overlay/focused-field';
+import { focusedField, type FocusedText } from '@platform-kits/overlay/focused-field';
 import { StatusBar } from 'expo-status-bar';
 import { stateWords as chipWords, status as chip } from '@platform-kits/statusbar';
 import { ScreenDemo } from './ScreenDemo.tsx';
+// The example's own name and package: the launcher label, the bubble notice and the panel all say Umer.
+const NAME = 'Umer';
+const OWN_APP = 'io.github.umeranjum17.byokit.example';
+// The bubble's latest reading of the focused field while it is showing, and the reading frozen at the last tap.
+// The panel's own window takes the field's focus when it opens, so it shows the frozen reading instead of reading.
+let liveField: FocusedText | null = null;
+let panelField: FocusedText | null = null;
+let panelUp = false;
 function Button({ id, label, onPress }: { id: string; label: string; onPress: () => void }) {
   return <Pressable testID={id} accessibilityRole="button" onPress={onPress} style={s.button}><Text style={s.buttonText}>{label}</Text></Pressable>;
 }
@@ -24,7 +32,10 @@ function Bubble() {
   useEffect(() => {
     overlay.state().then(setState);
     const offState = overlay.on('state', (e) => setState(e.state));
-    const offTap = overlay.on('tap', () => { overlay.logTap({ app: 'io.github.umeranjum17.byokit.example', action: 'tap' }); });
+    // A tap freezes the bubble's latest reading for the panel to show; a closed panel clears it so the next open
+    // waits for the next tap's reading instead of showing a stale one.
+    const offTap = overlay.on('tap', () => { overlay.logTap({ app: OWN_APP, action: 'tap' }); panelUp = false; panelField = liveField; });
+    const offPanel = overlay.on('panel', (e) => { panelUp = e.open; if (!e.open) panelField = null; });
     // A long press reads the field in focus, in any app: the bubble's window never takes the focus.
     const offLong = overlay.on('longPress', async () => {
       const read = await focusedField.read();
@@ -32,12 +43,27 @@ function Bubble() {
       overlay.say(read ? `Read: ${read.text}` : 'No text field in focus.');
     });
     const offClear = overlay.on('keepClear', (e) => setClear(e.clear ? 'The bubble is clear of the field.' : 'No clear spot: the bubble stays put.'));
-    return () => { offState(); offTap(); offLong(); offClear(); };
+    return () => { offState(); offTap(); offPanel(); offLong(); offClear(); };
   }, []);
+  // While the bubble is on, keep the focused field's latest reading: the bubble's window never takes the focus, so
+  // this reads the field the panel cannot (its own window takes that focus).
+  useEffect(() => {
+    if (state !== 'on') return;
+    let live = true;
+    const tick = async () => {
+      const read = await focusedField.read();
+      if (!live) return;
+      // While the panel is up its window owns the focus, so a read here would be empty; keep the last reading.
+      if (!panelUp) liveField = read;
+      setTimeout(tick, 300);
+    };
+    tick();
+    return () => { live = false; liveField = null; };
+  }, [state]);
   const start = async () => {
     const s = await overlay.start({
       host: 'window', mood: 'bubble', panel: 'bubblePanel',
-      notice: { channel: 'bubble', title: 'byokit example', text: 'The bubble is on.', icon: 'byokit_notification' },
+      notice: { channel: 'bubble', title: NAME, text: 'The bubble is on.', icon: 'byokit_notification' },
     });
     if (s === 'needs-permission') await overlay.openPermission();
   };
@@ -74,12 +100,53 @@ function Bubble() {
   );
 }
 
-/** The panel a bubble tap opens, in its own translucent activity. */
+/**
+ * The panel a bubble tap opens, in its own translucent activity: the field the bubble last read in focus, shown in
+ * full and wrapped. The kit returns the app's package; the example's own field reads as its name. Nothing focused,
+ * or no accessibility service, is said plainly instead of pretending a read happened.
+ */
 export function BubblePanel() {
+  const [read, setRead] = useState<FocusedText | null>(null);
+  const [reading, setReading] = useState(true);
+  const [service, setService] = useState(true);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const available = await focusedField.available();
+      // The tap freezes the bubble's reading; the tap handler runs just after the panel opens, so wait briefly for
+      // it, then fall back to reading here only if one still never arrived.
+      let field = panelField;
+      for (let i = 0; available && field == null && live && i < 16; i++) {
+        await new Promise((r) => setTimeout(r, 120));
+        field = panelField ?? (available ? await focusedField.read() : null);
+      }
+      if (!live) return;
+      setService(available);
+      setRead(field);
+      setReading(false);
+    })();
+    return () => { live = false; };
+  }, []);
+  const app = read ? (read.app === OWN_APP ? NAME : read.app) : '';
   return (
     <View style={s.panel}>
-      <View testID="panel" style={s.sheet}>
-        <Text style={s.words}>Opened from the bubble.</Text>
+      <View testID="panel" style={s.panelCard}>
+        <Text style={s.panelTitle}>{NAME}</Text>
+        {reading ? <Text style={s.small}>Reading the field…</Text>
+          : read ? (
+            <View style={s.panelBody}>
+              <Text testID="panelApp" style={s.small}>In focus: {app}</Text>
+              <ScrollView testID="panelScroll" style={s.panelScroll} contentContainerStyle={s.panelScrollWords}>
+                <Text testID="panelText" style={s.panelText}>{read.text}</Text>
+              </ScrollView>
+            </View>
+          ) : (
+            <Text testID="panelUnavailable" style={s.small}>
+              {service
+                ? 'No text field is in focus. Tap a field, then open the bubble again.'
+                : 'Umer can’t read fields yet. Turn on Umer’s accessibility service in Settings.'}
+            </Text>
+          )}
         <Button id="panelClose" label="Close" onPress={() => overlay.closePanel()} />
       </View>
     </View>
@@ -116,7 +183,7 @@ function Chip() {
 export default function App() {
   return process.env.EXPO_PUBLIC_SCREEN_DEMO === '1' ? <ScreenDemo /> :
     <SafeAreaView style={{ flex: 1 }}><StatusBar style="dark" /><ScrollView contentContainerStyle={s.screen}>
-      <Text style={s.title}>Platform kits on {Platform.OS}</Text><Bubble /><Chip />
+      <Text style={s.title}>Umer</Text><Bubble /><Chip />
     </ScrollView></SafeAreaView>;
 }
 const s = StyleSheet.create({
@@ -128,6 +195,12 @@ const s = StyleSheet.create({
   code: { fontSize: 32, fontWeight: '700', letterSpacing: 2 },
   sheet: { gap: 12, padding: 16, borderRadius: 12, backgroundColor: '#f2f2f2' },
   panel: { flex: 1, justifyContent: 'flex-end', padding: 16 },
+  panelCard: { gap: 12, padding: 16, borderRadius: 12, backgroundColor: '#f2f2f2', maxHeight: '85%' },
+  panelTitle: { fontSize: 20, fontWeight: '600' },
+  panelBody: { flexShrink: 1, gap: 8 },
+  panelScroll: { flexShrink: 1 },
+  panelScrollWords: { paddingBottom: 4 },
+  panelText: { fontSize: 17, lineHeight: 24 },
   button: { backgroundColor: '#111', borderRadius: 10, padding: 14, alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 17 },
 });

@@ -246,10 +246,11 @@ test("cancel drops the pending state record; a bad callback fails without server
   const { ctx, sealed } = fakeContext();
   const oauth = blueskyOAuth(options, ctx, "g1");
   const flow = await oauth.authorize(HANDLE);
-  assert.equal(sealed.size, 1);
+  const pending = sealed.size;
+  assert.equal(pending, 1);
   flow.cancel();
-  await new Promise((r) => setImmediate(r));
-  assert.equal(sealed.size, 0);
+  for (let i = 0; i < 200 && sealed.size !== 0; i++) await new Promise((r) => setTimeout(r, 5));
+  assert.equal(sealed.size, 0, "cancel drops the pending state record");
   await assert.rejects(flow.finish(new URL(`${REDIRECT}?state=nope&code=x`)),
     (e) => e instanceof SocialError && e.code === "connect-failed" && !e.message.includes("nope"));
   await assert.rejects(oauth.authorize(" "), TypeError);

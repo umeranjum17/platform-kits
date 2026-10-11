@@ -3,6 +3,7 @@ package io.github.umeranjum17.byokit.example.a11y
 import android.app.UiAutomation
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import android.webkit.WebView
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -74,6 +75,21 @@ class WebFocusedFieldTest {
       })
     }
     assertTrue("Local WebView page ready to draw", drawn.await(60, TimeUnit.SECONDS))
+  }
+
+  /**
+   * The field's on-screen pixel bounds: its DOM rect snapped out to whole CSS pixels (as Chromium reports it), times
+   * the device pixel ratio, plus the WebView's screen spot.
+   */
+  private fun domBounds(activity: WebFieldActivity, id: String): Rect {
+    val (l, t, r, b) = js(activity, """
+      (() => { const b = document.getElementById('$id').getBoundingClientRect(), d = devicePixelRatio;
+        return [Math.floor(b.left), Math.floor(b.top), Math.ceil(b.right), Math.ceil(b.bottom)]
+          .map(v => v * d).join(','); })()
+    """.trimIndent()).trim('"').split(',').map { it.toDouble().toInt() }
+    val at = IntArray(2)
+    instrumentation.runOnMainSync { activity.web.getLocationOnScreen(at) }
+    return Rect(at[0] + l, at[1] + t, at[0] + r, at[1] + b)
   }
 
   /** DOM focus completes before Chromium publishes it to Android. Wait on that independent test precondition,
@@ -158,6 +174,8 @@ class WebFocusedFieldTest {
 
       assertEquals("\"\"", js(page, "document.activeElement.id"))
       assertNull("No focus never guesses the decoy", FocusedFields.read(service))
+      assertNull("No focus gives no node", FocusedFields.focusedNode(service))
+      var last: AccessibilityNodeInfo? = null
       repeat(10) { run ->
         for ((id, label) in listOf("area" to "textarea", "line" to "input")) {
           val seed = "$label seed $run" // a prior run's cached text cannot satisfy the readiness condition
@@ -170,19 +188,37 @@ class WebFocusedFieldTest {
           val read = FocusedFields.read(service)
           assertNotNull("$id read ${run + 1}/10", read)
           assertEquals("$id resolves the right node", seed, read!!.text)
+          val node = FocusedFields.focusedNode(service) ?: error("$id focusedNode ${run + 1}/10 was null")
+          // The field before this one (A) lost DOM focus to this one (B): B, never the stale A.
+          assertEquals("$id focusedNode ${run + 1}/10 text", seed, node.text?.toString())
+          assertNotEquals("$id focusedNode ${run + 1}/10 is not the previous field", last, node)
+          @Suppress("DEPRECATION") last?.recycle()
+          last = node
+          val bounds = Rect().also(node::getBoundsInScreen)
+          val expected = domBounds(page, id)
+          // 1 px slack for rounding the scaled rect to device pixels.
+          val off = listOf(bounds.left - expected.left, bounds.top - expected.top,
+            bounds.right - expected.right, bounds.bottom - expected.bottom)
+          println("$id ${run + 1}/10 bounds $bounds, DOM $expected")
+          assertTrue("$id bounds $bounds match the field's $expected", off.all { Math.abs(it) <= 1 })
           val field = FocusedFields.capture(service) ?: error("$id capture ${run + 1}/10 was null")
           try {
             assertEquals("$id insert ${run + 1}/10", "inserted", FocusedFields.insert(field, "$id-$run", replace = "all",
               copy = { error("A focused web field must insert, never copy") }, service = service))
           } finally { field.recycle() }
           assertEquals("\"$id-$run\"", js(page, "document.getElementById('$id').value"))
+          // focusedNode is the node capture()/insert() wrote into.
+          assertTrue("$id focusedNode refreshes", node.refresh())
+          assertEquals("$id focusedNode ${run + 1}/10 is the inserted field", "$id-$run", node.text?.toString())
           assertEquals("\"leave me alone\"", js(page, "document.getElementById('decoy').value"))
         }
       }
+      @Suppress("DEPRECATION") last?.recycle()
       assertEquals("\"password\"", js(page, "document.getElementById('password').focus(); document.activeElement.id"))
       awaitFocus(service, page, "password", "password editor", password = true)
       assertNull("Password read is hidden", FocusedFields.read(service))
       assertNull("Password capture is hidden", FocusedFields.capture(service))
+      assertNull("Password gives no node", FocusedFields.focusedNode(service))
       val root = service.rootInActiveWindow ?: error("Password window root unavailable")
       try {
         assertEquals("failed", FocusedFields.insert(root, "never write", service = service,
@@ -191,7 +227,7 @@ class WebFocusedFieldTest {
         @Suppress("DEPRECATION") root.recycle()
       }
       assertEquals("\"private\"", js(page, "document.getElementById('password').value"))
-      println("WebView focused fields: textarea 10/10, input 10/10, password hidden; decoy untouched")
+      println("WebView focused fields: textarea 10/10, input 10/10 (focusedNode matched, A->B, bounds); password hidden; decoy untouched")
     } finally {
       activity?.let { page -> instrumentation.runOnMainSync { page.finish() } }
       if (previous == "null") shell("settings delete secure enabled_accessibility_services")

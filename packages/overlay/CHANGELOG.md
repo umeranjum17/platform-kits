@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `FocusedFields.focusedNode(service)` returns the focused editable `AccessibilityNodeInfo` (WebView and Chrome
+  fields included) that `capture`, `read` and `insert` use, or null with no focus or on a password path; the caller
+  recycles it.
+- FIX: After focus moves from one WebView or Chrome field to another, `capture`, `read` and `focusedNode` take the
+  new field, not the previous one.
 - Correct the README: the kit is published, the screen-frame e2e proof names its consent, marker and five-place
   tour captures, and `keepClear`'s 64-box limit is documented.
 

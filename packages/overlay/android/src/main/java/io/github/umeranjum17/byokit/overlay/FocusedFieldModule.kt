@@ -127,7 +127,7 @@ class FocusedFieldModule : Module() {
       var raw: AccessibilityNodeInfo? = null
       try {
         val service = job.service ?: return@AsyncFunction job.cancellation.finish("failed")
-        raw = job.cancellation.step { FocusedFields.focus(service) }
+        raw = job.cancellation.step { FocusedFields.focusedNode(service) }
         val node = raw ?: return@AsyncFunction job.cancellation.finish("failed")
         FocusedFields.insert(
           node, text, o.replace, InsertOpts(o.attempts.toInt(), o.retryMs.toLong(), o.acceptNewlineLoss),

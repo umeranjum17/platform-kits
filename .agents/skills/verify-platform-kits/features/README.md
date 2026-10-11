@@ -40,6 +40,8 @@ Read this index before driving, then use the matching feature file as the recipe
 - [overlay-screen-frame](./overlay-screen-frame.md) — the screen-frame capture consent, point marker and tour.
   **Emulator-only**; the phone proof is unproved until `examples/expo/e2e-screen-frame.sh <emulator-serial>` runs on a
   disposable emulator.
+- [overlay-focused-field](./overlay-focused-field.md) — the focused WebView field's read, capture, insert and
+  `focusedNode`. **Emulator-only**; unproved until `:a11y-demo:connectedDebugAndroidTest` runs on a disposable emulator.
 
 ## Not provable on this host (declare honestly, do not fake)
 
@@ -65,3 +67,5 @@ in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`
   bubble stays at its saved spot (emulator-only).
 - [overlay-screen-frame](./overlay-screen-frame.md) — screen capture asks for consent every time, the point marker
   moves and dismisses, and the five-step tour visits every edge (emulator-only).
+- [overlay-focused-field](./overlay-focused-field.md) — the focused WebView field is read, captured, inserted into
+  and returned by `focusedNode`, following focus between fields; passwords and no focus give nothing (emulator-only).

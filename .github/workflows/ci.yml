@@ -6,6 +6,7 @@ on:
     branches: [main]
 
 concurrency:
+  # Superseded PR runs cancel their predecessor; a push to main keeps its own run.
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
 
@@ -59,14 +60,22 @@ jobs:
       - name: Allocate private scratch
         run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scope this job to browser/record changes
+        id: scope
+        run: node scripts/ci-scope.mjs browser
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.scope.outputs.run == 'true'
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
       - run: npm run build
+        if: steps.scope.outputs.run == 'true'
       - run: npx playwright install --with-deps chromium
+        if: steps.scope.outputs.run == 'true'
       - name: Permit the test Chromium sandbox on Ubuntu
+        if: steps.scope.outputs.run == 'true'
         run: |
           browser_bin="$(node --input-type=module -e 'import { chromium } from "playwright"; console.log(chromium.executablePath())')"
           # Ubuntu 24.04 restricts user namespaces for downloaded binaries. Allow only
@@ -81,6 +90,7 @@ jobs:
           EOF
           sudo apparmor_parser -r /etc/apparmor.d/platform-kits-test-chromium
       - name: Browser unit tests and real isolated Chromium
+        if: steps.scope.outputs.run == 'true'
         run: |
           PLATFORM_KITS_CHROME="$(node --input-type=module -e 'import { chromium } from "playwright"; console.log(chromium.executablePath())')"
           export PLATFORM_KITS_CHROME
@@ -97,14 +107,22 @@ jobs:
       - name: Allocate private scratch
         run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scope this job to record changes
+        id: scope
+        run: node scripts/ci-scope.mjs record
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.scope.outputs.run == 'true'
         with:
           node-version: '24'
           cache: npm
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg xvfb
+        if: steps.scope.outputs.run == 'true'
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
       - run: npm run build
+        if: steps.scope.outputs.run == 'true'
       - run: sh scripts/test.sh packages/record/test/real/smoke.test.ts
+        if: steps.scope.outputs.run == 'true'
       - name: Clean private scratch
         if: always()
         run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac
@@ -142,29 +160,41 @@ jobs:
       - name: Allocate private scratch
         run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scope this job to overlay changes
+        id: scope
+        run: node scripts/ci-scope.mjs overlay
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.scope.outputs.run == 'true'
         with:
           node-version: '24'
           cache: npm
           cache-dependency-path: examples/expo/package-lock.json
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: steps.scope.outputs.run == 'true'
         with:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        if: steps.scope.outputs.run == 'true'
       # Release bundling resolves the linked kit exports and their dependencies from the repo root.
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
       - run: npm run build
+        if: steps.scope.outputs.run == 'true'
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
       - run: CI=1 npx expo prebuild -p android --no-install && (cd android && ./gradlew assembleRelease :platform-kits-overlay:testDebugUnitTest)
+        if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
         env:
           EXPO_PUBLIC_SCREEN_DEMO: '1'
           NODE_ENV: production
       - run: |
           sudo chmod 666 /dev/kvm
+        if: steps.scope.outputs.run == 'true'
       - name: Install the emulator image with download diagnostics and retries
+        if: steps.scope.outputs.run == 'true'
         run: |
           # The emulator action adds this directory to PATH only in its later step.
           sdk_manager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -181,6 +211,7 @@ jobs:
           done
           exit 1
       - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        if: steps.scope.outputs.run == 'true'
         with:
           api-level: 36
           arch: x86_64
@@ -188,7 +219,7 @@ jobs:
           profile: pixel_7
           disable-animations: true
           script: cd examples/expo/android && ./gradlew :platform-kits-overlay:connectedDebugAndroidTest :a11y-demo:connectedDebugAndroidTest -PreactNativeArchitectures=x86_64 && cd .. && ./e2e-screen-frame.sh emulator-5554 .screen-captures
-      - if: always()
+      - if: always() && steps.scope.outputs.run == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: byokit-screen-proof
@@ -200,7 +231,7 @@ jobs:
             examples/expo/.screen-captures/timeout-ui.xml
             examples/expo/.screen-captures/timeout-windows.txt
             examples/expo/.screen-captures/timeout-logcat.txt
-      - if: always()
+      - if: always() && steps.scope.outputs.run == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: overlay-webview-test-reports
@@ -216,22 +247,32 @@ jobs:
       - name: Allocate private scratch
         run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scope this job to statusbar changes
+        id: scope
+        run: node scripts/ci-scope.mjs statusbar
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.scope.outputs.run == 'true'
         with:
           node-version: '24'
           cache: npm
           cache-dependency-path: examples/expo/package-lock.json
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: steps.scope.outputs.run == 'true'
         with:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        if: steps.scope.outputs.run == 'true'
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
       - name: Packed plugin on Expo 55
+        if: steps.scope.outputs.run == 'true'
         run: node scripts/statusbar-expo-smoke.ts
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
       - run: CI=1 npx expo prebuild -p android --no-install && (cd android && ./gradlew assembleDebug :platform-kits-statusbar:testDebugUnitTest)
+        if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
       - name: Clean private scratch
         if: always()

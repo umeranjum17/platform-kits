@@ -145,9 +145,13 @@ object FocusedFields {
     return roots
   }
 
-  /** Exact focus across window roots; four snapshots with at most 225 ms of settling pauses. */
+  /**
+   * The exactly focused editable node across window roots (a WebView/Chrome virtual node included), the same field
+   * [capture], [read] and [insert] use; null with no focus or on a password path. Four snapshots with at most 225 ms
+   * of settling pauses, so call it off the main thread. The caller recycles it.
+   */
   @Suppress("DEPRECATION")
-  internal fun focus(service: AccessibilityService, pause: (Long) -> Unit = Thread::sleep): AccessibilityNodeInfo? {
+  fun focusedNode(service: AccessibilityService, pause: (Long) -> Unit = Thread::sleep): AccessibilityNodeInfo? {
     var previous: AccessibilityNodeInfo? = null
     try {
       repeat(4) { attempt ->
@@ -177,7 +181,8 @@ object FocusedFields {
       try {
         if (!raw.refresh()) return null
         if (protected(wrapped)) { denied = true; return null }
-        field = find(wrapped)
+        // An already selected editor must not query global provider focus again and jump to its old sibling.
+        field = if (raw.isEditable) wrapped else find(wrapped)
         val fresh = (field as? NodeWrap)?.node ?: return null
         if (!fresh.refresh()) return null
         if (protected(field)) { denied = true; return null }
@@ -193,7 +198,8 @@ object FocusedFields {
       for (type in listOf(AccessibilityNodeInfo.FOCUS_INPUT, AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)) {
         var foundFocus = false
         for (root in roots) {
-          val raw = root.findFocus(type) ?: continue
+          val raw = (NodeWrap(root, service).findFocus(type == AccessibilityNodeInfo.FOCUS_INPUT) as? NodeWrap)?.node
+            ?: continue
           foundFocus = true
           resolve(raw)?.let { return it }
           if (denied) return null
@@ -216,12 +222,12 @@ object FocusedFields {
    * editable field has focus. The caller recycles it.
    */
   fun capture(service: AccessibilityService): FieldNode? {
-    return NodeWrap(focus(service) ?: return null, service)
+    return NodeWrap(focusedNode(service) ?: return null, service)
   }
 
   /** The focused editable field's text, or null when no editable field has focus. */
   fun read(service: AccessibilityService): FocusedFieldText? {
-    val raw = focus(service) ?: return null
+    val raw = focusedNode(service) ?: return null
     val node = NodeWrap(raw, service)
     try {
       return FocusedFieldText(
@@ -397,7 +403,7 @@ internal class NodeWrap(
     // Chromium's virtual fields often have no resource id. Framework node identity still identifies exactly
     // the captured virtual node; package/bounds alone must never select another field.
     if (captured == null) {
-      val focused = FocusedFields.focus(service) ?: return null
+      val focused = FocusedFields.focusedNode(service) ?: return null
       if (focused == node) return NodeWrap(focused, service)
       @Suppress("DEPRECATION") focused.recycle()
       return null
@@ -421,18 +427,21 @@ internal class NodeWrap(
   override val password: Boolean get() = node.isPassword
   @Suppress("DEPRECATION")
   override fun findFocus(input: Boolean): FieldNode? {
-    val focused = node.findFocus(if (input) AccessibilityNodeInfo.FOCUS_INPUT else AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)
-    // WebView's provider can return the focused native container even when a virtual editor has input focus.
+    // A provider lookup can keep returning the previous editable virtual node after DOM focus changed.
+    // Resolve exact descendant focus flags from the whole root before trusting that lookup's subtree.
     // Walk child snapshots by their EXACT focus flag; calling findFocus again on each virtual child can jump
     // back to the native container. Never substitute an unfocused editable node.
-    val nested = if (focused == null || (!focused.isEditable && !focused.isPassword)) {
-      focusedDescendant(focused ?: node, input)
+    focusedDescendant(node, input)?.let { return NodeWrap(it, owner) }
+    val focused = node.findFocus(if (input) AccessibilityNodeInfo.FOCUS_INPUT else AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)
+      ?: return null
+    // Some providers expose virtual children only through the returned native container.
+    val nested = if (focused !== node && !focused.isEditable && !focused.isPassword) {
+      focusedDescendant(focused, input)
     } else null
     if (nested != null) {
-      if (focused !== node) focused?.recycle()
+      focused.recycle()
       return NodeWrap(nested, owner)
     }
-    if (focused == null) return null
     // A distinct snapshot of the same node may carry newer password/focus flags; keep that snapshot.
     if (focused === node) return this
     return NodeWrap(focused, owner)

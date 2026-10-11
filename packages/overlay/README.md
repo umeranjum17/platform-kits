@@ -147,7 +147,9 @@ Both Kotlin `insert` overloads accept an optional `InsertCancellation`; `cancel(
 all service-owned inserts, including those with no explicit cancellation signal. The captured node remains owned
 by the caller and must stay alive until the insert returns. `FieldNode.of(node, service)` retains the service owner.
 
-`FocusedFields.capture(service)` does the same capture as a `FieldNode`. An app's own foreground service shows the
+`FocusedFields.capture(service)` does the same capture as a `FieldNode`. `FocusedFields.focusedNode(service)` returns
+that field's own `AccessibilityNodeInfo` (a WebView or Chrome field included, null with no focus or for a password),
+for the service's own reads such as `getBoundsInScreen`; call it off the main thread and recycle the node. An app's own foreground service shows the
 bubble with `ServiceBubble(WindowOverlayHost(this), moods, spots)`, which takes no rules and shows everywhere.
 
 **Status: published (BK-O3).** The bubble, both hosts, the panel, the tap log and the focused field are built

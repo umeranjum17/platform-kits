@@ -779,6 +779,7 @@ data class FieldIdentity(val viewId: String, val bounds: List<Int>, val app: Str
 object FocusedFields {                                                   // the Kotlin entry for the app's own service
   fun find(node: FieldNode): FieldNode?                                  // input focus, else accessibility focus; no field on a password path or without focus
   fun capture(service: AccessibilityService): FieldNode?                 // the focused field now, kept for a later insert; the caller recycles it
+  fun focusedNode(service: AccessibilityService): AccessibilityNodeInfo?  // the same field's raw node (WebView virtual nodes included), null with no focus or on a password path; the caller recycles it
   fun read(service: AccessibilityService): FocusedFieldText?
   fun insert(node: FieldNode, text: String, replace: String = "selection", opts: InsertOpts = InsertOpts(), pause: (Long) -> Unit = Thread::sleep, copy: (String) -> Boolean = { false }, cancellation: InsertCancellation = InsertCancellation(), service: AccessibilityService? = null): String
   fun insert(node: AccessibilityNodeInfo, text: String, replace: String = "selection", opts: InsertOpts = InsertOpts(), pause: (Long) -> Unit = Thread::sleep, copy: (String) -> Boolean = { false }, service: AccessibilityService? = ByokitAccessibility.service, cancellation: InsertCancellation = InsertCancellation()): String   // finds the field at or under node; "failed" when none
@@ -802,9 +803,11 @@ class FocusedFieldModule : Module()                                      // Expo
   - *Focused field:* `FocusedFields.capture(service)` at tap time, or `FieldNode.of(node)` over the
     `AccessibilityNodeInfo` the service captured itself with `findFocus(FOCUS_INPUT)` (falling back to
     `FOCUS_ACCESSIBILITY`): only an exactly focused field is taken, never the first editable descendant;
-    `capture`/`read` search every interactive window root and the active root, refresh and require two agreeing
+    `capture`/`read`/`focusedNode` search every interactive window root and the active root, refresh and require two agreeing
     snapshots with at most three 75 ms settling pauses. Native containers resolve virtual children by their exact
-    focus flags. The app's service retrieves window content, reports view ids and subscribes to window/content,
+    focus flags, searched from the whole root before a provider's own lookup, which can return the previous field.
+    `FocusedFields.focusedNode(service)` hands the service that same node, so it can skip it in its own text read or
+    take the field's position from `getBoundsInScreen` without its own focus logic. The app's service retrieves window content, reports view ids and subscribes to window/content,
     view focus, text and selection changes. `FocusedFields.insert` takes either. Before the first write and on
     retries, it refreshes and re-acquires the field across window roots only when view id, bounds and package
     all match (or framework node identity for virtual fields without ids), never a different field; the

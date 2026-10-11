@@ -65,6 +65,8 @@ feature map drives today:
 - `npm run test:browser` — the browser kit suite; set `PLATFORM_KITS_CHROME` to a real Chromium to exercise its launch.
 - `examples/expo/e2e-keep-clear.sh <emulator-serial>` — overlay keep-clear, **emulator-only**.
 - `examples/expo/e2e-screen-frame.sh <emulator-serial>` — overlay screen-frame, **emulator-only**.
+- `ANDROID_SERIAL=<emulator-serial> ./gradlew :a11y-demo:connectedDebugAndroidTest` (in `examples/expo/android`) —
+  overlay focused field, **emulator-only**.
 
 ## Evidence
 
@@ -120,5 +122,5 @@ a cleanup that eats the proof fails the run.
 ## Feature map
 
 Read [features/README.md](features/README.md) for the index and preconditions. The host-provable features today are
-`recorder-desktop` and `browser-launch`; `overlay-keep-clear` and `overlay-screen-frame` are **emulator-only** and
-their phone proof is **unproved** until run on a disposable emulator.
+`recorder-desktop` and `browser-launch`; `overlay-keep-clear`, `overlay-screen-frame` and `overlay-focused-field` are
+**emulator-only** and their phone proof is **unproved** until run on a disposable emulator.

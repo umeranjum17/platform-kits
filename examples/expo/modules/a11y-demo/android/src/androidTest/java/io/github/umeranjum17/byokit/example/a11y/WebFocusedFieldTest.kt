@@ -77,12 +77,16 @@ class WebFocusedFieldTest {
     assertTrue("Local WebView page ready to draw", drawn.await(60, TimeUnit.SECONDS))
   }
 
-  /** The field's on-screen pixel bounds, from the DOM rect, the device pixel ratio and the WebView's screen spot. */
+  /**
+   * The field's on-screen pixel bounds: its DOM rect snapped out to whole CSS pixels (as Chromium reports it), times
+   * the device pixel ratio, plus the WebView's screen spot.
+   */
   private fun domBounds(activity: WebFieldActivity, id: String): Rect {
     val (l, t, r, b) = js(activity, """
       (() => { const b = document.getElementById('$id').getBoundingClientRect(), d = devicePixelRatio;
-        return [b.left * d, b.top * d, b.right * d, b.bottom * d].join(','); })()
-    """.trimIndent()).trim('"').split(',').map { Math.round(it.toDouble()).toInt() }
+        return [Math.floor(b.left), Math.floor(b.top), Math.ceil(b.right), Math.ceil(b.bottom)]
+          .map(v => v * d).join(','); })()
+    """.trimIndent()).trim('"').split(',').map { it.toDouble().toInt() }
     val at = IntArray(2)
     instrumentation.runOnMainSync { activity.web.getLocationOnScreen(at) }
     return Rect(at[0] + l, at[1] + t, at[0] + r, at[1] + b)
@@ -192,7 +196,7 @@ class WebFocusedFieldTest {
           last = node
           val bounds = Rect().also(node::getBoundsInScreen)
           val expected = domBounds(page, id)
-          // 1 px slack for Chromium's own CSS-to-device-pixel rounding of the same rect.
+          // 1 px slack for rounding the scaled rect to device pixels.
           val off = listOf(bounds.left - expected.left, bounds.top - expected.top,
             bounds.right - expected.right, bounds.bottom - expected.bottom)
           println("$id ${run + 1}/10 bounds $bounds, DOM $expected")

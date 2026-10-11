@@ -12,7 +12,8 @@ The proof is `WebFocusedFieldTest`, an instrumented test in the `a11y-demo` modu
 - **Read, capture, insert, 10/10** — a textarea and an input each get focus ten times; `read` returns that field's
   seed, and `insert` through `capture` lands in it on the first call.
 - **focusedNode** — returns the same field's node 10/10: its text is the seed, it is not the previous field (A -> B
-  returns B), its `getBoundsInScreen` matches the DOM rect within 1 px, and after the insert it reads the inserted text.
+  returns B), its `getBoundsInScreen` matches the DOM rect (snapped out to whole CSS pixels) within 1 px, and after
+  the insert it reads the inserted text.
 - **No focus, password** — `read`, `capture` and `focusedNode` are null with no focus and on the password field; an
   insert into the password root fails without the clipboard, and the decoy keeps `leave me alone`.
 

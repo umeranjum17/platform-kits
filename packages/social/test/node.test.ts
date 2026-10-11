@@ -188,8 +188,10 @@ test("runScheduler posts what is due and stops on abort", () => withDir(async (d
   const at = clock.now() + 60 * MIN;
   await social.schedule((await social.approve(draft.id, { revision: 1, by: "umer", at })).id);
   const stop = new AbortController();
-  const running = runScheduler(social, { intervalMs: 5, signal: stop.signal });
-  await new Promise((r) => setTimeout(r, 30));
+  let passes = 0;
+  const counted = { async runDue() { passes++; return social.runDue(); } } as unknown as Social;
+  const running = runScheduler(counted, { intervalMs: 5, signal: stop.signal });
+  await waitFor(() => passes >= 2); // the scheduler ran, and nothing was due yet
   assert.equal(fake.sent.length, 0);
   clock.set(at + MIN);
   await waitFor(() => fake.sent.length === 1);

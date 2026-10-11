@@ -1,8 +1,10 @@
 <p align="center">
-  <img src="docs/readme/mark.svg" width="64" height="64" alt="Platform kits mark">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/wordmark-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/readme/wordmark-light.svg">
+    <img src="docs/readme/wordmark-light.svg" width="320" height="64" alt="Platform kits">
+  </picture>
 </p>
-
-<h1 align="center">Platform kits</h1>
 
 <p align="center"><strong>Little building blocks. More capable apps.</strong><br>
 Record a screen, capture a page, or keep a helpful action within reach.</p>
@@ -14,7 +16,7 @@ Record a screen, capture a page, or keep a helpful action within reach.</p>
 </p>
 
 <p align="center">
-  <img src="docs/readme/recorder-saved.webp" width="640" alt="The real recorder example showing a saved video of Umer's seeded demo workspace, with playback controls and a New recording button.">
+  <img src="docs/readme/recorder-saved.webp" width="640" alt="The real recorder example showing a saved video of Sam's seeded demo workspace, with playback controls and a New recording button.">
   <br><sub>A real recording, saved on this computer. All screens below use demo data.</sub>
 </p>
 
@@ -28,7 +30,7 @@ Pick the kit you need, keep your own interface, and leave the rest out. No AI ac
 <table>
   <tr>
     <td width="50%"><img src="docs/readme/recorder-pick.webp" alt="The recorder's screen picker, showing a preview of the seeded workspace and Start recording."><br><strong>Pick a screen.</strong><br>A preview makes the choice clear.</td>
-    <td width="50%"><img src="docs/readme/browser-demo.webp" alt="A PNG captured by the built browser kit: Umer's fictional morning workspace, clearly marked as seed data."><br><strong>Keep a page.</strong><br>A browser capture, from local demo HTML.</td>
+    <td width="50%"><img src="docs/readme/browser-demo.webp" alt="A PNG captured by the built browser kit: Sam's fictional morning workspace, clearly marked as seed data."><br><strong>Keep a page.</strong><br>A browser capture, from local demo HTML.</td>
   </tr>
 </table>
 

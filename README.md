@@ -14,7 +14,7 @@ Record a screen, capture a page, or keep a helpful action within reach.</p>
 </p>
 
 <p align="center">
-  <img src="docs/readme/recorder-saved.webp" width="960" alt="The real recorder example showing a saved video of Umer's seeded demo workspace, with playback controls and a New recording button.">
+  <img src="docs/readme/recorder-saved.webp" width="640" alt="The real recorder example showing a saved video of Umer's seeded demo workspace, with playback controls and a New recording button.">
   <br><sub>A real recording, saved on this computer. All screens below use demo data.</sub>
 </p>
 

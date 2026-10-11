@@ -326,7 +326,7 @@ class NodeAdapterTest {
     val pauses = mutableListOf<Long>()
     val focused = FocusedFields.focusedNode(service) { pauses += it }
     assertSame(field, focused)
-    assertEquals(listOf(75L, 75L), pauses) // unreadable first snapshot, then two agreeing snapshots
+    assertEquals(listOf(75L), pauses) // a later lookup gets past the dead read; two agreeing snapshots
     assertEquals(0, accessible.textReads)
     assertEquals("web field", FieldNode.of(focused!!, service).shown())
   }

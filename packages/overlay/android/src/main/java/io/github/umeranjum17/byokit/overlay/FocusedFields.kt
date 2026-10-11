@@ -75,7 +75,7 @@ data class FieldSelection(val start: Int, val end: Int)
 data class FocusedFieldText(val app: String, val text: String, val selection: FieldSelection?)
 
 /**
- * The focused field for Kotlin callers (docs/capability-kits.md 7.4): the app's own accessibility service reads at
+ * The focused field for Kotlin callers (docs/capability-kits.md 7.5): the app's own accessibility service reads at
  * tap time and inserts into the captured node, with no JS running. Password fields are never read or typed into.
  */
 object FocusedFields {

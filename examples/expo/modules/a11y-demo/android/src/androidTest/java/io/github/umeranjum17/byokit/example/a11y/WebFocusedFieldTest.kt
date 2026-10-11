@@ -59,11 +59,20 @@ class WebFocusedFieldTest {
     assertTrue("Local WebView page loaded", activity.loaded.await(60, TimeUnit.SECONDS))
     val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60)
     var observed = ""
+    var nextWake = 0L
     while (!pageReady(activity)) {
       val state = pageState(activity)
       if (state != observed) { println("WebView waiting for page: $state"); observed = state }
       assertTrue("WebView attached, laid out and window focused: $state", System.nanoTime() < deadline)
       instrumentation.runOnMainSync { activity.web.requestFocus() }
+      // A cold emulator can still show its keyguard, leaving the activity attached, shown and laid
+      // out but never focused. Wake the device and dismiss the keyguard (an action on the focus
+      // condition, never a fixed sleep), then re-check; the loop exits the moment the window focuses.
+      if (System.nanoTime() >= nextWake) {
+        shell("input keyevent KEYCODE_WAKEUP")
+        shell("wm dismiss-keyguard")
+        nextWake = System.nanoTime() + TimeUnit.SECONDS.toNanos(1)
+      }
       Thread.sleep(100)
     }
     println("WebView page ready: ${pageState(activity)}")

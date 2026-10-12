@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Export `xLength` from `@platform-kits/social` for assist-mode drafts: the X weighted length (a URL counts 23)
+- so a host can warn about over-limit drafts without posting anything.
 - Correct the README: the kit is private and not on npm, so it no longer shows an `npm install` line.
 - Add the social kit: connect your own accounts, draft, check, approve, schedule and post. Nothing reaches a
   network without an approval bound to a SHA-256 digest of the exact payload; approvals are single-use, any edit

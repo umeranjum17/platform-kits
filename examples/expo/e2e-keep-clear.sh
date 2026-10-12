@@ -1,6 +1,8 @@
 #!/bin/sh
 # Account-free keepClear proof on an emulator owned by this test run: the bubble's pill over the example's text field,
-# then kept clear of it, then back at its saved spot. Logs the measured boxes and fails on any overlap after keepClear.
+# then kept clear of it, then back at its saved spot. Then, with the example's accessibility service on and no keepClear
+# boxes, the field's focus alone moves the bubble off it, and it returns when focus leaves. Logs the measured boxes and
+# fails on any overlap after keepClear or while the field has focus.
 # Build the default example first (no EXPO_PUBLIC_SCREEN_DEMO): NODE_ENV=production ./gradlew assembleRelease
 set -eu
 cd "$(dirname "$0")"
@@ -14,6 +16,7 @@ a() { adb -s "$serial" "$@"; }
 a install -r android/app/build/outputs/apk/release/app-release.apk >/dev/null
 a shell pm clear "$app" >/dev/null
 a shell appops set "$app" SYSTEM_ALERT_WINDOW allow
+a shell settings delete secure enabled_accessibility_services >/dev/null # the keepClear part runs without the service
 a shell am start -n "$app/.MainActivity" >/dev/null
 screen() { a shell uiautomator dump /sdcard/byokit-keep-clear.xml >/dev/null 2>&1; a exec-out cat /sdcard/byokit-keep-clear.xml; }
 expect() {
@@ -31,6 +34,9 @@ for n in E.fromstring(sys.stdin.read()).iter("node"):
 else: raise SystemExit("missing: "+sys.argv[1])' "$1"
 }
 tap() { set -- $(bounds "$1"); a shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); }
+# Whether a node, by resource-id, has input focus: true or false.
+focused() { screen | python3 -c 'import sys,xml.etree.ElementTree as E
+print(next(n.get("focused") for n in E.fromstring(sys.stdin.read()).iter("node") if n.get("resource-id")==sys.argv[1]))' "$1"; }
 # The bubble's overlay window (bubble plus pill): left top right bottom. Android 11+ prints `frame=`, older `mFrame=`.
 bubble() {
   a shell dumpsys window windows > "$captures/windows.txt"
@@ -51,11 +57,15 @@ expect 'Stop the bubble'
 tap fieldInput
 a shell input text 'Will%syou%sarrive%sat%sfive?'
 a shell input keyevent KEYCODE_BACK # keyboard closed, as after an insert from the panel
-# Drag the bubble so its saved spot sits on the field (the person's own choice of spot).
-set -- $(bubble); bx=$(( ($1 + $3) / 2 )); by=$(( ($2 + $4) / 2 ))
-set -- $(bounds fieldInput); fy=$(( ($2 + $4) / 2 ))
-a shell input swipe "$bx" "$by" "$bx" "$fy" 800
-sleep 1
+# Drag the bubble so its saved spot sits on the field (the person's own choice of spot). A busy emulator can drop the
+# last moves of a swipe and stop short, so drag again from where it landed.
+for _ in 1 2 3; do
+  set -- $(bubble); bx=$(( ($1 + $3) / 2 )); by=$(( ($2 + $4) / 2 ))
+  set -- $(bounds fieldInput); fy=$(( ($2 + $4) / 2 ))
+  [ $(( by - fy )) -le 20 ] && [ $(( fy - by )) -le 20 ] && break
+  a shell input swipe "$bx" "$by" "$bx" "$fy" 800
+  sleep 1
+done
 tap sayPill
 shot keep-clear-1-before
 [ "$(overlap $(bounds fieldInput) $(bubble))" -gt 0 ] || { echo 'fixture: the pill does not cover the field' >&2; exit 1; }
@@ -76,3 +86,34 @@ set -- $saved; top=$2; set -- $(bubble)
 [ "$2" = "$top" ] || { echo "the bubble did not return to its saved spot ($top, now $2)" >&2; exit 1; }
 tap bubbleStop
 echo "passed keepClear on $serial"
+
+# The focused field alone, with no keepClear boxes: a fresh start keeps the saved spot (still on the field) and focuses
+# nothing; the service is turned on after the force-stop, which would turn it off again.
+a shell am force-stop "$app"
+a shell settings put secure enabled_accessibility_services "$app/io.github.umeranjum17.byokit.example.a11y.DemoAccessibilityService"
+a shell settings put secure accessibility_enabled 1
+a shell am start -n "$app/.MainActivity" >/dev/null
+expect 'Umer'
+tap bubbleStart
+expect 'Stop the bubble'
+tap sayPill
+shot focus-1-unfocused
+[ "$(focused fieldInput)" = false ] || { echo 'fixture: the field already has focus' >&2; exit 1; }
+[ "$(overlap $(bounds fieldInput) $(bubble))" -gt 0 ] || { echo 'fixture: the bubble does not cover the unfocused field' >&2; exit 1; }
+saved=$(bubble)
+# No keepClear button: the field's focus alone moves the bubble. Tap its left end, which the bubble's row leaves free.
+set -- $(bounds fieldInput); a shell input tap $(( $1 + 40 )) $(( ($2 + $4) / 2 ))
+for _ in $(seq 10); do [ "$(overlap $(bounds fieldInput) $(bubble))" = 0 ] && break; sleep 1; done
+shot focus-2-focused
+[ "$(focused fieldInput)" = true ] || { echo 'fixture: the tap did not focus the field' >&2; exit 1; }
+[ "$(overlap $(bounds fieldInput) $(bubble))" = 0 ] || { echo 'the bubble or pill covers the focused field' >&2; exit 1; }
+a shell input keyevent KEYCODE_HOME # focus leaves the field: the home screen has no text field in focus
+set -- $saved; top=$2
+for _ in $(seq 10); do set -- $(bubble); [ "$2" = "$top" ] && break; sleep 1; done
+sleep 1; a exec-out screencap -p > "$captures/focus-3-left.png"
+echo "focus-3-left bubble=[$(bubble)] saved=[$saved]" | tee -a "$captures/boxes.txt"
+set -- $(bubble)
+[ "$2" = "$top" ] || { echo "the bubble did not return to its saved spot after focus left ($top, now $2)" >&2; exit 1; }
+a shell am start -n "$app/.MainActivity" >/dev/null
+tap bubbleStop
+echo "passed focused-field keep-clear on $serial"

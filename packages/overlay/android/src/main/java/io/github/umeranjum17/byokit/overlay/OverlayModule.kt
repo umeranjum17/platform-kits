@@ -68,13 +68,15 @@ class OverlayModule : Module() {
   private var point: PointMarker? = null
   private var rules: RulesRecord? = null
   private var rects = emptyList<ClearRect>()
+  // The focused field's box, which the bubble keeps clear of along with the app's own boxes.
+  private var field: ClearRect? = null
   // The foreground app (accessibility host) and what watches it and the keyboard while the bubble is on.
   private var app: String? = null
   private val watching = mutableListOf<() -> Unit>()
-  // The keyboard follows the service's attach and detach on either host.
+  // The keyboard and the focused field follow the service's attach and detach on either host.
   private var foregroundOff: (() -> Unit)? = null
   private var lastForeground: String? = null
-  private var keyboardOff: (() -> Unit)? = null
+  private var serviceOff: (() -> Unit)? = null
   private var pending: Promise? = null
   // A stop while the service is still starting waits for its startForeground; stopping it sooner crashes the app.
   private var stopWhenHosted = false
@@ -206,8 +208,7 @@ class OverlayModule : Module() {
     b.events.add(::bubbleEvent)
     bubble = b
     b.setLabel(label.takeIf { it.isNotEmpty() })
-    b.keepClear(rects)
-    watchKeyboard()
+    watchService()
     val foreground = ByokitAccessibility.foreground
     if (o.host == "accessibility" && foreground != null) { app = foreground.current; watching += foreground.onChange(::appChanged) }
     b.spotKey = SpotStore.key(o.spots == "per-app", app)
@@ -215,14 +216,18 @@ class OverlayModule : Module() {
     setState("on")
   }
 
-  /** The bubble rests above the keyboard while the app's accessibility service is attached. */
-  private fun watchKeyboard() {
-    keyboardOff?.invoke()
-    keyboardOff = null
+  /** The bubble rests above the keyboard and off the focused field while the app's accessibility service is attached. */
+  private fun watchService() {
+    serviceOff?.invoke()
+    serviceOff = null
+    field = null
     val b = bubble ?: return
+    keepClear(rects)
     val k = ByokitAccessibility.keyboard
     b.imeTopPx = k?.imeTopPx
-    keyboardOff = k?.onChange { b.imeTopPx = it }
+    val keyboardOff = k?.onChange { b.imeTopPx = it }
+    val fieldOff = ByokitAccessibility.field?.onChange { field = it; keepClear(rects) }
+    serviceOff = { keyboardOff?.invoke(); fieldOff?.invoke() }
   }
 
   private fun appChanged(now: String?) {
@@ -239,7 +244,7 @@ class OverlayModule : Module() {
   /** Kept until cleared, stop() or a change of foreground app or host; the bubble drops them on a display change. */
   private fun keepClear(clear: List<ClearRect>) {
     rects = clear
-    bubble?.keepClear(clear)
+    bubble?.keepClear(clear + listOfNotNull(field))
   }
 
   /** The bubble shows unless the open panel hides it or, on the accessibility host, the rules hide it over this app. */
@@ -253,8 +258,9 @@ class OverlayModule : Module() {
   private fun unwatch() {
     watching.forEach { it() }
     watching.clear()
-    keyboardOff?.invoke()
-    keyboardOff = null
+    serviceOff?.invoke()
+    serviceOff = null
+    field = null
     app = null
   }
 
@@ -264,7 +270,7 @@ class OverlayModule : Module() {
       context.stopService(Intent(context, OverlayService::class.java))
       return
     }
-    if (kind == "accessibility" && state == "on") watchKeyboard()
+    if (kind == "accessibility" && state == "on") watchService()
     if (options?.host != kind) return
     if (h != null) {
       val p = pending ?: return

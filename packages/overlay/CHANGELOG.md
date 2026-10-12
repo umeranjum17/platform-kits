@@ -4,6 +4,10 @@
 
 - `overlay.foregroundApp()` and `overlay.on('foregroundApp', ...)` expose only the current Android package from
   the app's attached accessibility service, excluding host overlays; off or unknown returns null.
+- FIX: While the app's accessibility service is attached, the bubble and its pill keep off the focused text field on
+  their own, on either host and from `ServiceBubble`, with no `keepClear` boxes from the app, and return to the saved
+  spot when focus leaves. The field's box joins any app boxes. Only the field's bounds are read (never its text, and
+  nothing on a password path), from one focus snapshot every 400 ms off the main thread while the bubble is on.
 - Add `manualPanel` to `StartOptions`: with it a bubble tap only emits `tap`, so the app can read the focused field
   before calling `openPanel(props)` and the panel's own window takes the focus. Default (absent/false) tap auto-open
   is unchanged.

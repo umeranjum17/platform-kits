@@ -17,6 +17,9 @@ object ByokitAccessibility {
   /** The keyboard's top while a service is attached. */
   @Volatile var keyboard: KeyboardInset? = null
     private set
+  /** The focused text field's box while a service is attached. */
+  @Volatile var field: FocusedFieldBox? = null
+    private set
   /** The attached service, for FocusedFieldModule. */
   @Volatile internal var service: AccessibilityService? = null
     private set
@@ -49,6 +52,7 @@ object ByokitAccessibility {
     this.service = service
     foreground = AccessibilityForegroundApp(service)
     keyboard = AccessibilityKeyboardInset(service)
+    field = AccessibilityFocusedFieldBox(service)
     val h = AccessibilityOverlayHost(service)
     host = h
     hosts.emit(h)
@@ -63,8 +67,10 @@ object ByokitAccessibility {
     this.service = null
     (foreground as? AccessibilityForegroundApp)?.close()
     (keyboard as? AccessibilityKeyboardInset)?.close()
+    (field as? AccessibilityFocusedFieldBox)?.close()
     foreground = null
     keyboard = null
+    field = null
     host?.remove()
     host = null
     hosts.emit(null)

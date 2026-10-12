@@ -79,6 +79,7 @@ class ServiceBubbleTest {
     val s = service()
     s.start(ServiceBubble.Config(mood = "calm", label = "Voice", rules = topRules))
     assertEquals(emptyList<FakeBubble>(), made)
+    attached = host
     hosts.emit(host)
     assertEquals(listOf("calm"), made.single().shown)
     assertEquals(listOf("Voice"), made.single().labels)
@@ -109,8 +110,10 @@ class ServiceBubbleTest {
     val s = service()
     s.start(ServiceBubble.Config(mood = "calm", label = "Voice", rules = topRules))
     s.setMood("happy")
+    attached = null
     hosts.emit(null)
     assertEquals(1, made.single().hides)
+    attached = host
     hosts.emit(host)
     assertEquals(2, made.size)
     assertEquals(listOf("happy"), made.last().shown)
@@ -263,7 +266,8 @@ class ServiceBubbleTest {
     assertEquals(listOf(emptyList(), field, emptyList()), made.single().kept)
     // A rebind restores them on the new bubble only while the host stays; a lost host drops them.
     s.keepClear(field)
-    hosts.emit(null); hosts.emit(host)
+    attached = null; hosts.emit(null)
+    attached = host; hosts.emit(host)
     assertEquals(emptyList<ClearRect>(), made.last().kept.last())
     s.keepClear(field)
     s.stop()

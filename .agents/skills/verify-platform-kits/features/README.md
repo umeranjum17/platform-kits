@@ -35,8 +35,9 @@ Read this index before driving, then use the matching feature file as the recipe
 ## Emulator-only (phone proof unproved until run on an emulator)
 
 - [overlay-keep-clear](./overlay-keep-clear.md) — the overlay bubble's pill is kept clear of the focused field (named
-  by the app, or on its own while the app's accessibility service is attached), and returns to its saved spot. **Emulator-only**; the phone proof is unproved until
-  `examples/expo/e2e-keep-clear.sh <emulator-serial>` runs on a disposable emulator.
+  by the app, or on its own while the app's accessibility service is attached), and returns to its saved spot.
+  **Emulator-only**; the phone proof is unproved until `examples/expo/e2e-keep-clear.sh <emulator-serial>` runs on a
+  disposable emulator.
 - [overlay-screen-frame](./overlay-screen-frame.md) — the screen-frame capture consent, point marker and tour.
   **Emulator-only**; the phone proof is unproved until `examples/expo/e2e-screen-frame.sh <emulator-serial>` runs on a
   disposable emulator.

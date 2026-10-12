@@ -94,7 +94,7 @@ services call `ServiceBubble.keepClear(listOf(ClearRect(left, top, width, height
 While the app's accessibility service is attached, the bubble (on either host, and `ServiceBubble`) also keeps clear
 of the focused text field on its own, with no boxes from the app, and returns to its saved spot when focus leaves.
 The field's box joins the app's boxes. The kit reads only the field's bounds, from one focus snapshot every 400 ms
-off the main thread, and nothing on a password path.
+off the main thread, and nothing on a password path; the check runs only while the bubble is shown.
 
 ```ts
 import { overlay } from '@platform-kits/overlay';

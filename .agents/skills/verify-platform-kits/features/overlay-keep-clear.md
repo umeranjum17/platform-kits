@@ -3,8 +3,8 @@
 The Android overlay bubble's **keep-clear** behavior: when the person asks the bubble to keep clear, its pill moves
 off the text field it was covering; when no clear spot exists it stays at its saved spot and says so; when they turn
 keep-clear off it returns to that saved spot. With the app's accessibility service attached, the bubble also keeps off
-the focused text field by itself, with no boxes from the app, and returns when focus leaves. The proof is `examples/expo/e2e-keep-clear.sh`, an account-free journey
-that measures real window boxes on a disposable emulator.
+the focused text field by itself, with no boxes from the app, and returns when focus leaves. The proof is
+`examples/expo/e2e-keep-clear.sh`, an account-free journey that measures real window boxes on a disposable emulator.
 
 **Emulator-only. The phone proof is unproved until this runs on an emulator you own; it refuses a physical device.**
 

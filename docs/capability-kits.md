@@ -689,8 +689,8 @@ export const focusedField: FocusedField;
   focused descendants) prevents reads, writes and clipboard fallback. The same search, read and insert are callable
   from Kotlin (`FocusedFields`, 7.5), so the app's
   service can read at tap time and insert into the captured node with no JS running.
-- `read()` and `insert()` touch the field only on the app's call. Separately, while the bubble is on and the app's
-  service is attached, the overlay watches the focused field's bounds only while the bubble is shown (never its text, and nothing on a password path)
+- `read()` and `insert()` touch the field only on the app's call. Separately, while the bubble is shown and the app's
+  service is attached, the overlay watches the focused field's bounds (never its text, and nothing on a password path)
   so the bubble keeps off the field in focus (7.5).
 
 ### Screen frames and point markers
@@ -814,7 +814,7 @@ class FocusedFieldModule : Module()                                      // Expo
 - **The app-owned-service API.** Everything an app's own service hands the kit, or gets back, is public Kotlin, with
   the kit's internals (`NodeWrap`, the same-field search) behind it:
   - *Attach:* `ByokitAccessibility.attach(this)` / `detach(this)`, which supplies `host`, `foreground`, `keyboard` and
-    `field`. While a bubble is on (either JS host, or a `ServiceBubble`), `field` polls the focused editable node's
+    `field`. While a bubble is shown (either JS host, or a `ServiceBubble`), `field` polls the focused editable node's
     bounds every 400 ms on its own thread, from one focus snapshot (no settling pauses), and never on a password path;
     no text is read. The bubble keeps clear of that box together with the app's `keepClear` boxes and returns to its
     saved spot when focus leaves.

@@ -593,7 +593,7 @@ export interface Overlay {
   setMood(mood: string): void;
   setLabel(label: string | null): void;   // TalkBack label for the bubble; null clears it
   setRules(rules: AppRules): void;
-  keepClear(rects: ClearRect[]): void;   // up to 64; the bubble and pill move up or down off them; [] clears; the saved spot stays
+  keepClear(rects: ClearRect[]): void;   // up to 64; the bubble and pill move up or down off them; [] clears; the saved spot stays; the focused field's box joins them while the app's service is attached
   openPanel(props?: Record<string, string>): Promise<void>;
   closePanel(): Promise<void>;
   on<T extends OverlayEventType>(type: T, fn: (e: Extract<OverlayEvent, { type: T }>) => void): () => void;   // listener set
@@ -689,6 +689,9 @@ export const focusedField: FocusedField;
   focused descendants) prevents reads, writes and clipboard fallback. The same search, read and insert are callable
   from Kotlin (`FocusedFields`, 7.5), so the app's
   service can read at tap time and insert into the captured node with no JS running.
+- `read()` and `insert()` touch the field only on the app's call. Separately, while the bubble is shown and the app's
+  service is attached, the overlay watches the focused field's bounds (never its text, and nothing on a password path)
+  so the bubble keeps off the field in focus (7.5).
 
 ### Screen frames and point markers
 
@@ -778,6 +781,7 @@ class ServiceBubble(moods: (String) -> Drawable?, spots: SpotStore, reducedMotio
 }
 interface ForegroundApp { val current: String?; fun onChange(fn: (String?) -> Unit): () -> Unit }
 interface KeyboardInset { val imeTopPx: Int?; fun onChange(fn: (Int?) -> Unit): () -> Unit }
+class AccessibilityFocusedFieldBox { fun onChange(fn: (ClearRect?) -> Unit): () -> Unit }   // the focused field's bounds only, read off the main thread, null on a password path
 object ByokitAccessibility { fun attach(service: AccessibilityService); fun detach(service: AccessibilityService) }   // called from the app's own service
 class PanelActivity : ReactActivity()                                    // translucent, renders the app-registered component
 class TapLog(context: Context) { fun add(app: String, action: String, at: Long); fun since(at: Long): List<TapEntry>; fun clear(); fun prune(now: Long) }  // 30 days
@@ -809,7 +813,11 @@ class FocusedFieldModule : Module()                                      // Expo
   the rules itself so they work before JS runs again.
 - **The app-owned-service API.** Everything an app's own service hands the kit, or gets back, is public Kotlin, with
   the kit's internals (`NodeWrap`, the same-field search) behind it:
-  - *Attach:* `ByokitAccessibility.attach(this)` / `detach(this)`, which supplies `host`, `foreground` and `keyboard`.
+  - *Attach:* `ByokitAccessibility.attach(this)` / `detach(this)`, which supplies `host`, `foreground`, `keyboard` and
+    `field`. While a bubble is shown (either JS host, or a `ServiceBubble`), `field` polls the focused editable node's
+    bounds every 400 ms on its own thread, from one focus snapshot (no settling pauses), and never on a password path;
+    no text is read. The bubble keeps clear of that box together with the app's `keepClear` boxes and returns to its
+    saved spot when focus leaves.
   - *Focused field:* `FocusedFields.capture(service)` at tap time, or `FieldNode.of(node)` over the
     `AccessibilityNodeInfo` the service captured itself with `findFocus(FOCUS_INPUT)` (falling back to
     `FOCUS_ACCESSIBILITY`): only an exactly focused field is taken, never the first editable descendant;

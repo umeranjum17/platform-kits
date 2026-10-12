@@ -22,7 +22,10 @@ manifest brings the overlay and foreground-service permissions, the bubble's ser
 `shownFor`, `setApp` and `resetApp` keep the per-app rules; `stateWords(state)` gives the sentence to show for a state.
 `@platform-kits/overlay/focused-field` reads the focused text field only when the app calls `read()`.
 
-Nothing reads another app's screen in the background, and the tap log keeps no text and forgets entries after 30 days.
+Nothing reads another app's screen in the background, except two things while the app's accessibility service is
+attached: the foreground app's package name, every 400 ms; and, while the bubble is shown, the focused text field's
+bounds, never its text. The kit never reads a password field, so the bubble cannot move off one. The tap log keeps no
+text and forgets entries after 30 days.
 
 ## Focused field
 
@@ -53,7 +56,8 @@ WebView content. Resolution refreshes the field and waits for two agreeing snaps
 pauses while focus settles. Insertion re-acquires the same captured field before its first write, including virtual
 fields without resource ids (matched by framework node identity). With no focus
 the kit reports no field. A password node anywhere on the focused path prevents reads, writes and clipboard fallback. The same service also gives the `accessibility` host (no overlay switch needed),
-the foreground app that `rules` and `spots: 'per-app'` follow, and the keyboard's top so the bubble rests above it.
+the foreground app that `rules` and `spots: 'per-app'` follow, the keyboard's top so the bubble rests above it, and the
+focused field's bounds so the bubble keeps off the field in focus (see `keepClear` below).
 The bubble's window never takes focus, so a tap or long press on it leaves the other app's field focused.
 
 ```ts
@@ -86,6 +90,11 @@ the screen. When no clear spot is left the bubble stays at its saved spot rather
 `keepClear` event with `clear: false` tells the app (`clear: true` once it is clear again). At most 64 boxes, with
 finite edges and non-negative sizes, or it throws `Error('overlay: keepClear …')` before any native call. Kotlin
 services call `ServiceBubble.keepClear(listOf(ClearRect(left, top, width, height)))`.
+
+While the app's accessibility service is attached, the bubble (on either host, and `ServiceBubble`) also keeps clear
+of the focused text field on its own, with no boxes from the app, and returns to its saved spot when focus leaves.
+The field's box joins the app's boxes. The kit reads only the field's bounds, from one focus snapshot every 400 ms
+off the main thread, and nothing on a password path; the check runs only while the bubble is shown.
 
 ```ts
 import { overlay } from '@platform-kits/overlay';

@@ -12,13 +12,15 @@ import android.provider.Settings
  * service passes its host instead (the secondary constructor): that bubble knows no foreground app, so it takes no
  * rules and shows everywhere. It hides while [PanelActivity] is on top (`Config.hideWhilePanelOpen`), and shows again
  * over another app the person switches to while the panel is still open; the app opens the panel from [events].
+ * While the app's accessibility service is attached and the bubble is shown, it keeps off the focused text field, on
+ * either host.
  *
  * Main thread only, like the service's callbacks.
  *
  * @param moods the drawable for a mood name ([drawables] resolves the app's drawables by name)
  * @param spots where the rest spot is remembered ([PrefsSpotStore])
  * @param reducedMotion whether to snap instead of glide ([reducedMotion] reads the system setting)
- * The remaining parameters are the kit's own sources (bubble view, host, foreground app, keyboard, panel and the
+ * The remaining parameters are the kit's own sources (bubble view, host, foreground app, keyboard, panel, the
  * open panel's package), replaced in the JVM tests.
  */
 class ServiceBubble(
@@ -46,7 +48,7 @@ class ServiceBubble(
     bubbles: (OverlayHost) -> BubbleControl = { h -> Bubble(h, spots, moods, reducedMotion) },
   ) : this(
     moods, spots, reducedMotion, bubbles,
-    hosts = Listeners(), hostNow = { host }, foregroundNow = { null }, keyboardNow = { null },
+    hostNow = { host }, foregroundNow = { null }, keyboardNow = { null },
   )
 
   /**
@@ -72,6 +74,9 @@ class ServiceBubble(
   // The person switched to another app with the panel still open, so it no longer covers the bubble.
   private var leftPanel = false
   private var rects = emptyList<ClearRect>()
+  // The focused field's box, kept clear of along with [rects].
+  private var field: ClearRect? = null
+  private var fieldOff: (() -> Unit)? = null
   private val watching = mutableListOf<() -> Unit>()
   private var unhost: (() -> Unit)? = null
   private var unpanel: (() -> Unit)? = null
@@ -115,7 +120,7 @@ class ServiceBubble(
    */
   fun keepClear(rects: List<ClearRect>) {
     this.rects = rects
-    bubble?.keepClear(rects)
+    bubble?.keepClear(rects + listOfNotNull(field))
   }
 
   /** The resting mood, kept for later shows. */
@@ -162,6 +167,17 @@ class ServiceBubble(
     }
   }
 
+  private fun watchField() {
+    if (fieldOff != null) return
+    fieldOff = ByokitAccessibility.field?.onChange { field = it; keepClear(rects) }
+  }
+
+  private fun unwatchField() {
+    fieldOff?.invoke()
+    fieldOff = null
+    if (field != null) { field = null; keepClear(rects) }
+  }
+
   private fun appChanged(now: String?) {
     if (now == null) return
     if (panelOpen) {
@@ -185,7 +201,13 @@ class ServiceBubble(
     val c = config ?: return
     val b = bubble ?: return
     val underPanel = panelOpen && !leftPanel && c.hideWhilePanelOpen
-    if (underPanel || (ruled && !c.rules.shows(app))) b.hide() else b.show(c.mood)
+    if (underPanel || (ruled && !c.rules.shows(app))) {
+      unwatchField()
+      b.hide()
+    } else {
+      watchField()
+      b.show(c.mood)
+    }
   }
 
   private fun panelChanged(open: Boolean) {
@@ -198,21 +220,28 @@ class ServiceBubble(
   private fun unwatch() {
     watching.forEach { it() }
     watching.clear()
+    unwatchField()
     app = null
     ruled = false
   }
 
   private fun hostChanged(h: OverlayHost?) {
     if (config == null) return
-    if (h != null) {
-      if (host == null) show(h) // a rebind restores the bubble with the remembered config
-    } else {
-      unwatch()
+    if (h != null && host == null) {
+      show(h) // a rebind restores the bubble with the remembered config
+      return
+    }
+    unwatch()
+    if (hostNow() == null) {
       rects = emptyList()
       bubble?.hide()
       bubble = null
       host = null
+      return
     }
+    bubble?.imeTopPx = null
+    watch()
+    refresh()
   }
 
   companion object {

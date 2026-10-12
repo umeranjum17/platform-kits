@@ -170,8 +170,9 @@ object FocusedFields {
     }
   }
 
+  /** One snapshot of [focusedNode] with no settling pause: the focused editable node, or null; the caller recycles it. */
   @Suppress("DEPRECATION")
-  private fun focusNow(service: AccessibilityService): AccessibilityNodeInfo? {
+  internal fun focusNow(service: AccessibilityService): AccessibilityNodeInfo? {
     val roots = roots(service)
     var kept: AccessibilityNodeInfo? = null
     var denied = false

@@ -3,8 +3,8 @@
 The Android overlay's **manual panel open**: by default a bubble tap still auto-opens the app's registered `panel`;
 with `manualPanel: true` in `StartOptions` a tap only emits `tap`, and the app opens the panel itself with
 `overlay.openPanel(props)`. This is the opt-in seam that lets an app read the focused field **before** the panel's own
-window takes the focus. The proof is the example bubble-panel journey driven with a transient proof-only handler (the
-example sets `manualPanel` and reads at the tap) on a disposable emulator; that handler is reverted afterwards.
+window takes the focus. The example opts in permanently: its `tap` handler reads the focused field and only then calls
+`openPanel`, so the proof is the example bubble-panel journey on a disposable emulator.
 
 **Emulator-only. The phone proof is unproved until this runs on an emulator you own; it refuses a physical device.**
 
@@ -41,20 +41,21 @@ NODE_ENV=production ./gradlew assembleRelease        # default example; no EXPO_
 serial=emulator-5554   # your run's serial; every adb call names it
 ```
 
-Drive: install the APK, allow the overlay permission, start the bubble, tap it. Default (no `manualPanel`):
-`PanelActivity` opens for the configured panel and the `panel` event fires. Then, with a transient proof-only
-`manualPanel: true` plus a `tap` → `focusedField.read()` → `openPanel` handler (reverted afterwards; the lasting
-example wiring is owned by the bubble-panel example task): the tap emits `tap` without opening, and the explicit
-`openPanel` opens it, cold and warm; **Close** closes it in both modes.
+Drive: install the APK, allow the overlay permission, start the bubble, tap a text field and type, then tap the bubble.
+With the example's `manualPanel: true` the tap emits `tap` without a native open, and the `tap` handler reads
+`focusedField.read()` and then calls `openPanel`: `PanelActivity` opens for the configured panel (the `panel` event
+fires then), showing the field that was focused at the tap, cold and warm; **Close** closes it. Default auto-open (no
+`manualPanel`) is proven the same way with `manualPanel: true` temporarily removed from the example's `start`, so a
+plain tap opens it.
 
-Pass = the drive log shows auto-open by default, tap-only plus explicit open with `manualPanel`, and Close in both
-modes on `<serial>`, with exit 0 and captures under `$EVIDENCE_DIR/panel`.
+Pass = the drive log shows tap-only plus explicit open with the example's `manualPanel`, read-before-open showing the
+field, Close, and (with the temporary removal) auto-open by default on `<serial>`, with exit 0 and captures under
+`$EVIDENCE_DIR/panel`.
 
 ## Gotchas
 
-- **The lasting example wiring lives elsewhere.** The example setting `manualPanel: true` and calling `openPanel`
-  from its `tap` handler is owned by the example bubble-panel task; the proof here uses a transient proof-only handler
-  that is reverted afterwards, so the kit branch stays producer-only.
+- **The example opts in permanently.** The example sets `manualPanel: true`, so a bubble tap alone no longer opens the
+  panel; the panel opens only because the example's `tap` handler reads the field and then calls `openPanel`.
 - **`manualPanel` only removes the native auto-launch**; it does not read anything itself. The app is responsible for
   reading the field and calling `openPanel`; forgetting the open leaves the tap as an event only.
 - **The script refuses a physical device** (`emulator-*` serial only). Never point it at a real phone, and kill only

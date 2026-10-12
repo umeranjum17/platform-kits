@@ -34,7 +34,11 @@ function Bubble() {
     // the panel's own window never takes the focus before the read finishes.
     const offTap = overlay.on('tap', async () => {
       overlay.logTap({ app: OWN_APP, action: 'tap' });
-      panelField = await focusedField.read();
+      try {
+        panelField = await focusedField.read();
+      } catch {
+        panelField = null;
+      }
       await overlay.openPanel();
     });
     // A long press reads the field in focus, in any app: the bubble's window never takes the focus.

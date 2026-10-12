@@ -24,6 +24,9 @@ npm run build                 # tsc -b every package, then fix-words-dts.cjs
 Ready when `npm run build` exits 0 and `packages/record/dist/index.js` and `packages/browser/dist/index.js` exist.
 Builds and full test suites are heavy: run them one at a time through the environment's memory gate, holding any
 shared heavy-jobs lock it provides. A one-package `tsc` plus a single test file is light and needs no lock.
+Start an emulator only through the environment's memory gate, the same way as builds; reuse an emulator already
+running for the same work instead of starting another; at most one emulator per run; stop it
+(`adb -s <serial> emu kill`) when the proof ends.
 
 ## Doctor
 

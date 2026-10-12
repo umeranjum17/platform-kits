@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `manualPanel` to `StartOptions`: with it a bubble tap only emits `tap`, so the app can read the focused field
+  before calling `openPanel(props)` and the panel's own window takes the focus. Default (absent/false) tap auto-open
+  is unchanged.
 - `FocusedFields.focusedNode(service)` returns the focused editable `AccessibilityNodeInfo` (WebView and Chrome
   fields included) that `capture`, `read` and `insert` use, or null with no focus or on a password path; the caller
   recycles it.

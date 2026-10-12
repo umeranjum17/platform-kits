@@ -9,11 +9,9 @@ import { ScreenDemo } from './ScreenDemo.tsx';
 // The example's own name and package: the launcher label, the bubble notice and the panel all say Umer.
 const NAME = 'Umer';
 const OWN_APP = 'io.github.umeranjum17.byokit.example';
-// The bubble's latest reading of the focused field while it is showing, and the reading frozen at the last tap.
-// The panel's own window takes the field's focus when it opens, so it shows the frozen reading instead of reading.
-let liveField: FocusedText | null = null;
+// The field reading the tap handler takes before it opens the panel: the panel's own window would take the field's
+// focus, so the bubble reads at the tap and the panel shows that frozen reading.
 let panelField: FocusedText | null = null;
-let panelUp = false;
 function Button({ id, label, onPress }: { id: string; label: string; onPress: () => void }) {
   return <Pressable testID={id} accessibilityRole="button" onPress={onPress} style={s.button}><Text style={s.buttonText}>{label}</Text></Pressable>;
 }
@@ -32,10 +30,22 @@ function Bubble() {
   useEffect(() => {
     overlay.state().then(setState);
     const offState = overlay.on('state', (e) => setState(e.state));
-    // A tap freezes the bubble's latest reading for the panel to show; a closed panel clears it so the next open
-    // waits for the next tap's reading instead of showing a stale one.
-    const offTap = overlay.on('tap', () => { overlay.logTap({ app: OWN_APP, action: 'tap' }); panelUp = false; panelField = liveField; });
-    const offPanel = overlay.on('panel', (e) => { panelUp = e.open; if (!e.open) panelField = null; });
+    // The tap reads the focused field while the bubble still has it, then opens the panel itself (manualPanel), so
+    // the panel's own window never takes the focus before the read finishes.
+    const offTap = overlay.on('tap', async () => {
+      overlay.logTap({ app: OWN_APP, action: 'tap' });
+      try {
+        panelField = await focusedField.read();
+      } catch {
+        panelField = null;
+      }
+      try {
+        await overlay.openPanel();
+      } catch {
+        panelField = null;
+      }
+    });
+    const offPanel = overlay.on('panel', (e) => { if (!e.open) panelField = null; });
     // A long press reads the field in focus, in any app: the bubble's window never takes the focus.
     const offLong = overlay.on('longPress', async () => {
       const read = await focusedField.read();
@@ -45,24 +55,9 @@ function Bubble() {
     const offClear = overlay.on('keepClear', (e) => setClear(e.clear ? 'The bubble is clear of the field.' : 'No clear spot: the bubble stays put.'));
     return () => { offState(); offTap(); offPanel(); offLong(); offClear(); };
   }, []);
-  // While the bubble is on, keep the focused field's latest reading: the bubble's window never takes the focus, so
-  // this reads the field the panel cannot (its own window takes that focus).
-  useEffect(() => {
-    if (state !== 'on') return;
-    let live = true;
-    const tick = async () => {
-      const read = await focusedField.read();
-      if (!live) return;
-      // While the panel is up its window owns the focus, so a read here would be empty; keep the last reading.
-      if (!panelUp) liveField = read;
-      setTimeout(tick, 300);
-    };
-    tick();
-    return () => { live = false; liveField = null; };
-  }, [state]);
   const start = async () => {
     const s = await overlay.start({
-      host: 'window', mood: 'bubble', panel: 'bubblePanel',
+      host: 'window', mood: 'bubble', panel: 'bubblePanel', manualPanel: true,
       notice: { channel: 'bubble', title: NAME, text: 'The bubble is on.', icon: 'byokit_notification' },
     });
     if (s === 'needs-permission') await overlay.openPermission();
@@ -113,16 +108,9 @@ export function BubblePanel() {
     let live = true;
     (async () => {
       const available = await focusedField.available();
-      // The tap freezes the bubble's reading; the tap handler runs just after the panel opens, so wait briefly for
-      // it, then fall back to reading here only if one still never arrived.
-      let field = panelField;
-      for (let i = 0; available && field == null && live && i < 16; i++) {
-        await new Promise((r) => setTimeout(r, 120));
-        field = panelField ?? (available ? await focusedField.read() : null);
-      }
       if (!live) return;
       setService(available);
-      setRead(field);
+      setRead(panelField);
       setReading(false);
     })();
     return () => { live = false; };

@@ -559,6 +559,7 @@ export type StartOptions = {
   notice?: ForegroundNotice;           // required for host 'window' (the foreground service's notification)
   rules?: AppRules;                    // host 'accessibility' only (needs the foreground app); 'window' + rules rejects
   panel?: string;                      // registered React component opened on tap; absent: tap only emits
+  manualPanel?: boolean;               // true: open the configured panel explicitly with openPanel()
   hideWhilePanelOpen?: boolean;        // default true
   spots?: 'global' | 'per-app';        // remembered rest spot; 'per-app' needs host 'accessibility'; default 'global'
   label?: string;                      // TalkBack label for the bubble; absent: none
@@ -831,7 +832,8 @@ class FocusedFieldModule : Module()                                      // Expo
 - Moods are drawable names the app ships. With reduced motion (the system animator scale is 0), the bubble snaps
   instead of gliding, and a mood change is a still frame.
 - `panel` is an `AppRegistry.registerComponent` key the app registers in its JS entry. `start()` stores it in the
-  module. A tap, or `openPanel(props)`, launches `PanelActivity` with `FLAG_ACTIVITY_NEW_TASK` and the extras
+  module. A tap launches `PanelActivity` automatically unless `manualPanel` is true; `openPanel(props)` launches it
+  explicitly either way, with `FLAG_ACTIVITY_NEW_TASK` and the extras
   `byokit.panel` (the key) and `byokit.props` (a Bundle of strings). `getMainComponentName()` returns the key, and the
   React activity delegate passes the props as the component's initial props. `openPanel` without a stored key rejects
   `Error('overlay: no panel')`.

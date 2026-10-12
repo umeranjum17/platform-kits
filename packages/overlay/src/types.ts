@@ -13,6 +13,7 @@ export type StartOptions = {
   notice?: ForegroundNotice;           // required for host 'window' (the foreground service's notification)
   rules?: AppRules;                    // host 'accessibility' only (needs the foreground app); 'window' + rules rejects
   panel?: string;                      // registered React component opened on tap; absent: tap only emits
+  manualPanel?: boolean;               // true: a tap only emits; the app opens it with openPanel(props)
   hideWhilePanelOpen?: boolean;        // default true
   spots?: 'global' | 'per-app';        // remembered rest spot; 'per-app' needs host 'accessibility'; default 'global'
   label?: string;                      // TalkBack label for the bubble; absent: none, as before

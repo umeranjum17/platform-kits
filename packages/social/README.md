@@ -49,6 +49,34 @@ const controller = new AbortController();
 void runScheduler(social, { intervalMs: 30_000, signal: controller.signal });
 ```
 
+## Assist mode
+
+Assist mode helps a person write, without the kit posting anything. The host reads the focused field, drafts with
+its own drafter, checks the length, and inserts the draft back into the field; the person still taps send in the app
+themselves. The kit sends nothing: this path never calls `Social.post` or `Social.approve` and makes no network
+calls. A password field reads as `null`, and there is no copy fallback for it.
+
+```ts
+import { xLength } from '@platform-kits/social';
+import { focusedField } from '@platform-kits/overlay/focused-field';
+
+// The drafter is host-supplied: (field text, app) => draft text.
+declare const draftWithHostModel: (text: string, app: string) => Promise<string>;
+
+const field = await focusedField.read(); // null when nothing editable has focus, including password fields
+if (field) {
+  const draft = await draftWithHostModel(field.text, field.app);
+  const over = xLength(draft) - 280;
+  if (over > 0) { /* warn: `Too long for X by ${over}` */ }
+  // The draft was polished from the whole field, so it goes back over all of it; the person still sends it.
+  await focusedField.insert(draft, { replace: 'all', attempts: 13, retryMs: 150 });
+}
+```
+
+The Expo example (`examples/expo`, bubble panel "Help me write" → "Put it in the field") composes exactly this.
+Its demo drafter is a small local function with no provider SDK and no network; a real host plugs in a drafter
+backed by BYOKit accounts.
+
 ## The approve gate
 
 - **No approval, no post.** `post(approvalId)` is the only path to a network. Provider handles are opaque: the

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Dimensions, PermissionsAndroid, PixelRatio, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { overlay, stateWords, type OverlayState } from '@platform-kits/overlay';
 import { focusedField, type FocusedText } from '@platform-kits/overlay/focused-field';
+import { xLength } from '@platform-kits/social';
 import { StatusBar } from 'expo-status-bar';
 import { stateWords as chipWords, status as chip } from '@platform-kits/statusbar';
 import { ScreenDemo } from './ScreenDemo.tsx';
@@ -12,6 +13,38 @@ const OWN_APP = 'io.github.umeranjum17.byokit.example';
 // The field reading the tap handler takes before it opens the panel: the panel's own window would take the field's
 // focus, so the bubble reads at the tap and the panel shows that frozen reading.
 let panelField: FocusedText | null = null;
+// The draft "Put it in the field" hands over as it closes the panel: with the panel on top nothing holds input
+// focus, so the app inserts after the close, when focus is back on the field, and says so on the pill.
+let panelDraft: string | null = null;
+// Insert after the panel closes: wait for focus to return to the field (it does on close), then put the whole draft
+// over all of it. The kit sends nothing; the person still taps send in the app themselves.
+async function insertAfterClose(draft: string): Promise<void> {
+  for (let i = 0; i < 40; i++) {
+    try {
+      if (await focusedField.read()) break;
+    } catch {
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  let result = 'failed';
+  try {
+    result = await focusedField.insert(draft, { replace: 'all', attempts: 13, retryMs: 150 });
+  } catch {
+    result = 'failed';
+  }
+  // Confirm from the field itself: the insert can report 'cancelled' when the service rebinds after its set already
+  // landed, so the pill only claims what the field shows.
+  let landed = result === 'inserted' || result === 'landedWithoutNewlines';
+  if (!landed) {
+    try {
+      landed = (await focusedField.read())?.text === draft;
+    } catch {
+      landed = false;
+    }
+  }
+  overlay.say(landed ? 'Inserted. Send it yourself.' : `Not inserted (${result}).`, undefined, 60000);
+}
 function Button({ id, label, onPress }: { id: string; label: string; onPress: () => void }) {
   return <Pressable testID={id} accessibilityRole="button" onPress={onPress} style={s.button}><Text style={s.buttonText}>{label}</Text></Pressable>;
 }
@@ -45,7 +78,16 @@ function Bubble() {
         panelField = null;
       }
     });
-    const offPanel = overlay.on('panel', (e) => { if (!e.open) panelField = null; });
+    const offPanel = overlay.on('panel', (e) => {
+      if (!e.open) {
+        panelField = null;
+        if (panelDraft != null) {
+          const draft = panelDraft;
+          panelDraft = null;
+          void insertAfterClose(draft);
+        }
+      }
+    });
     // A long press reads the field in focus, in any app: the bubble's window never takes the focus.
     const offLong = overlay.on('longPress', async () => {
       const read = await focusedField.read();
@@ -95,15 +137,30 @@ function Bubble() {
   );
 }
 
+// The host-supplied drafter for this demo: a small local function, no provider SDK and no network. A real host
+// plugs in a drafter backed by BYOKit accounts.
+async function demoDrafter(text: string): Promise<string> {
+  const trimmed = text.trim().replace(/\s+/g, ' ');
+  return trimmed ? `Polished: ${trimmed}` : '';
+}
+
 /**
  * The panel a bubble tap opens, in its own translucent activity: the field the bubble last read in focus, shown in
  * full and wrapped. The kit returns the app's package; the example's own field reads as its name. Nothing focused,
  * or no accessibility service, is said plainly instead of pretending a read happened.
+ *
+ * Assist mode ("Help me write" → "Put it in the field"): the demo drafter above writes a draft from the frozen
+ * reading, the draft shows with its X length check, and "Put it in the field" closes the panel and inserts the
+ * draft into the field once its focus returns (the panel on top leaves nothing focused to insert into).
+ * The kit sends nothing: no Social.post/approve call, no network; the person still taps send in the app themselves.
+ * A password field reads as null, and there is no copy fallback for it.
  */
 export function BubblePanel() {
   const [read, setRead] = useState<FocusedText | null>(null);
   const [reading, setReading] = useState(true);
   const [service, setService] = useState(true);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
   useEffect(() => {
     let live = true;
     (async () => {
@@ -116,6 +173,27 @@ export function BubblePanel() {
     return () => { live = false; };
   }, []);
   const app = read ? (read.app === OWN_APP ? NAME : read.app) : '';
+  const help = async () => {
+    if (!read || drafting) return;
+    setDrafting(true);
+    try {
+      setDraft(await demoDrafter(read.text));
+    } finally {
+      setDrafting(false);
+    }
+  };
+  const put = async () => {
+    if (draft == null) return;
+    // The panel's window holds the screen, so nothing underneath has input focus for an insert. Hand the draft over,
+    // close the panel, and let the app insert once focus is back on the field (see insertAfterClose).
+    panelDraft = draft;
+    try {
+      await overlay.closePanel();
+    } catch {
+      panelDraft = null;
+    }
+  };
+  const over = draft == null ? 0 : xLength(draft) - 280;
   return (
     <View style={s.panel}>
       <View testID="panel" style={s.panelCard}>
@@ -127,6 +205,19 @@ export function BubblePanel() {
               <ScrollView testID="panelScroll" style={s.panelScroll} contentContainerStyle={s.panelScrollWords}>
                 <Text testID="panelText" style={s.panelText}>{read.text}</Text>
               </ScrollView>
+              <Button id="assistHelp" label="Help me write" onPress={help} />
+              {drafting && <Text style={s.small}>Writing a draft…</Text>}
+              {draft != null && (
+                <View style={s.panelBody}>
+                  <ScrollView style={s.panelScroll} contentContainerStyle={s.panelScrollWords}>
+                    <Text testID="assistDraft" style={s.panelText}>{draft}</Text>
+                  </ScrollView>
+                  <Text testID="assistLength" style={s.small}>
+                    {over > 0 ? `Too long for X by ${over} (${xLength(draft)} / 280).` : `Fits X (${xLength(draft)} / 280).`}
+                  </Text>
+                  <Button id="assistInsert" label="Put it in the field" onPress={put} />
+                </View>
+              )}
             </View>
           ) : (
             <Text testID="panelUnavailable" style={s.small}>

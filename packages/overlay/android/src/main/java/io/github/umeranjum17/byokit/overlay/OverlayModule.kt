@@ -73,10 +73,11 @@ class OverlayModule : Module() {
   // The foreground app (accessibility host) and what watches it and the keyboard while the bubble is on.
   private var app: String? = null
   private val watching = mutableListOf<() -> Unit>()
-  // The keyboard and the focused field follow the service's attach and detach on either host.
+  // The keyboard follows the service's attach and detach on either host; the focused field while the bubble is shown.
   private var foregroundOff: (() -> Unit)? = null
   private var lastForeground: String? = null
   private var serviceOff: (() -> Unit)? = null
+  private var fieldOff: (() -> Unit)? = null
   private var pending: Promise? = null
   // A stop while the service is still starting waits for its startForeground; stopping it sooner crashes the app.
   private var stopWhenHosted = false
@@ -216,18 +217,27 @@ class OverlayModule : Module() {
     setState("on")
   }
 
-  /** The bubble rests above the keyboard and off the focused field while the app's accessibility service is attached. */
+  /** The bubble rests above the keyboard while the app's accessibility service is attached. */
   private fun watchService() {
     serviceOff?.invoke()
     serviceOff = null
-    field = null
+    unwatchField()
     val b = bubble ?: return
     keepClear(rects)
     val k = ByokitAccessibility.keyboard
     b.imeTopPx = k?.imeTopPx
-    val keyboardOff = k?.onChange { b.imeTopPx = it }
-    val fieldOff = ByokitAccessibility.field?.onChange { field = it; keepClear(rects) }
-    serviceOff = { keyboardOff?.invoke(); fieldOff?.invoke() }
+    serviceOff = k?.onChange { b.imeTopPx = it }
+  }
+
+  private fun watchField() {
+    if (fieldOff != null) return
+    fieldOff = ByokitAccessibility.field?.onChange { field = it; keepClear(rects) }
+  }
+
+  private fun unwatchField() {
+    fieldOff?.invoke()
+    fieldOff = null
+    if (field != null) { field = null; keepClear(rects) }
   }
 
   private fun appChanged(now: String?) {
@@ -252,7 +262,13 @@ class OverlayModule : Module() {
     val o = options ?: return
     val b = bubble ?: return
     val ruledOut = o.host == "accessibility" && rules?.shows(app) == false
-    if ((panelOpen && o.hideWhilePanelOpen) || ruledOut) b.hide() else b.show(mood)
+    if ((panelOpen && o.hideWhilePanelOpen) || ruledOut) {
+      unwatchField()
+      b.hide()
+    } else {
+      watchField()
+      b.show(mood)
+    }
   }
 
   private fun unwatch() {
@@ -260,7 +276,7 @@ class OverlayModule : Module() {
     watching.clear()
     serviceOff?.invoke()
     serviceOff = null
-    field = null
+    unwatchField()
     app = null
   }
 
@@ -270,7 +286,10 @@ class OverlayModule : Module() {
       context.stopService(Intent(context, OverlayService::class.java))
       return
     }
-    if (kind == "accessibility" && state == "on") watchService()
+    if (kind == "accessibility" && state == "on") {
+      watchService()
+      if (h != null) refresh()
+    }
     if (options?.host != kind) return
     if (h != null) {
       val p = pending ?: return

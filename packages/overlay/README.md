@@ -23,7 +23,7 @@ manifest brings the overlay and foreground-service permissions, the bubble's ser
 `@platform-kits/overlay/focused-field` reads the focused text field only when the app calls `read()`.
 
 Nothing reads another app's screen in the background, except one thing while the bubble is on with the app's
-accessibility service attached: the focused text field's bounds, never its text and never on a password field, so the
+accessibility service attached and shown: the focused text field's bounds, never its text and never on a password field, so the
 bubble keeps off it. The tap log keeps no text and forgets entries after 30 days.
 
 ## Focused field

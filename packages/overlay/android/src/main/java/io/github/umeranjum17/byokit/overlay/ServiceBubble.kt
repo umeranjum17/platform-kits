@@ -12,7 +12,8 @@ import android.provider.Settings
  * service passes its host instead (the secondary constructor): that bubble knows no foreground app, so it takes no
  * rules and shows everywhere. It hides while [PanelActivity] is on top (`Config.hideWhilePanelOpen`), and shows again
  * over another app the person switches to while the panel is still open; the app opens the panel from [events].
- * While the app's accessibility service is attached it keeps off the focused text field, on either host.
+ * While the app's accessibility service is attached and the bubble is shown, it keeps off the focused text field, on
+ * either host.
  *
  * Main thread only, like the service's callbacks.
  *
@@ -75,6 +76,7 @@ class ServiceBubble(
   private var rects = emptyList<ClearRect>()
   // The focused field's box, kept clear of along with [rects].
   private var field: ClearRect? = null
+  private var fieldOff: (() -> Unit)? = null
   private val watching = mutableListOf<() -> Unit>()
   private var unhost: (() -> Unit)? = null
   private var unpanel: (() -> Unit)? = null
@@ -163,7 +165,17 @@ class ServiceBubble(
       b.imeTopPx = k.imeTopPx
       watching += k.onChange { b.imeTopPx = it }
     }
-    ByokitAccessibility.field?.let { f -> watching += f.onChange { field = it; keepClear(rects) } }
+  }
+
+  private fun watchField() {
+    if (fieldOff != null) return
+    fieldOff = ByokitAccessibility.field?.onChange { field = it; keepClear(rects) }
+  }
+
+  private fun unwatchField() {
+    fieldOff?.invoke()
+    fieldOff = null
+    if (field != null) { field = null; keepClear(rects) }
   }
 
   private fun appChanged(now: String?) {
@@ -189,7 +201,13 @@ class ServiceBubble(
     val c = config ?: return
     val b = bubble ?: return
     val underPanel = panelOpen && !leftPanel && c.hideWhilePanelOpen
-    if (underPanel || (ruled && !c.rules.shows(app))) b.hide() else b.show(c.mood)
+    if (underPanel || (ruled && !c.rules.shows(app))) {
+      unwatchField()
+      b.hide()
+    } else {
+      watchField()
+      b.show(c.mood)
+    }
   }
 
   private fun panelChanged(open: Boolean) {
@@ -202,7 +220,7 @@ class ServiceBubble(
   private fun unwatch() {
     watching.forEach { it() }
     watching.clear()
-    field = null
+    unwatchField()
     app = null
     ruled = false
   }
@@ -223,7 +241,7 @@ class ServiceBubble(
     }
     bubble?.imeTopPx = null
     watch()
-    keepClear(rects)
+    refresh()
   }
 
   companion object {

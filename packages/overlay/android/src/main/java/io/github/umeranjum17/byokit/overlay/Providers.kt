@@ -80,7 +80,7 @@ class AccessibilityFocusedFieldBox(private val service: AccessibilityService) {
   private val thread = HandlerThread("byokit-focused-field").apply { start() }
   private val worker = Handler(thread.looper)
   private val main = Handler(Looper.getMainLooper())
-  // ponytail: walks the focused window's tree every POLL_MS while the bubble is on; take focus events from the app's
+  // ponytail: walks the focused window's tree every POLL_MS while the bubble is shown; take focus events from the app's
   // service if that ever costs too much.
   private val watch = Watch(worker, ::box)
 

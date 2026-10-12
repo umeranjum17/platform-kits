@@ -690,7 +690,7 @@ export const focusedField: FocusedField;
   from Kotlin (`FocusedFields`, 7.5), so the app's
   service can read at tap time and insert into the captured node with no JS running.
 - `read()` and `insert()` touch the field only on the app's call. Separately, while the bubble is on and the app's
-  service is attached, the overlay watches the focused field's bounds (never its text, and nothing on a password path)
+  service is attached, the overlay watches the focused field's bounds only while the bubble is shown (never its text, and nothing on a password path)
   so the bubble keeps off the field in focus (7.5).
 
 ### Screen frames and point markers

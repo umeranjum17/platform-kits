@@ -39,8 +39,13 @@ function Bubble() {
       } catch {
         panelField = null;
       }
-      await overlay.openPanel();
+      try {
+        await overlay.openPanel();
+      } catch {
+        panelField = null;
+      }
     });
+    const offPanel = overlay.on('panel', (e) => { if (!e.open) panelField = null; });
     // A long press reads the field in focus, in any app: the bubble's window never takes the focus.
     const offLong = overlay.on('longPress', async () => {
       const read = await focusedField.read();
@@ -48,7 +53,7 @@ function Bubble() {
       overlay.say(read ? `Read: ${read.text}` : 'No text field in focus.');
     });
     const offClear = overlay.on('keepClear', (e) => setClear(e.clear ? 'The bubble is clear of the field.' : 'No clear spot: the bubble stays put.'));
-    return () => { offState(); offTap(); offLong(); offClear(); };
+    return () => { offState(); offTap(); offPanel(); offLong(); offClear(); };
   }, []);
   const start = async () => {
     const s = await overlay.start({

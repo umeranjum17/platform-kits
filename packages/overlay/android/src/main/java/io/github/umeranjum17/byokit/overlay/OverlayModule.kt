@@ -39,6 +39,7 @@ class StartRecord : Record {
   @Field val notice: NoticeRecord? = null
   @Field val rules: RulesRecord? = null
   @Field val panel: String? = null
+  @Field val manualPanel: Boolean = false
   @Field val hideWhilePanelOpen: Boolean = true
   @Field val spots: String = "global"
   @Field val label: String = ""
@@ -278,7 +279,7 @@ class OverlayModule : Module() {
     when (e) {
       is OverlayEvent.Tap -> {
         emit(mapOf("type" to "tap"))
-        options?.panel?.let { PanelActivity.launch(context, it, emptyMap()) }
+        options?.takeIf { !it.manualPanel }?.panel?.let { PanelActivity.launch(context, it, emptyMap()) }
       }
       is OverlayEvent.LongPress -> emit(mapOf("type" to "longPress"))
       is OverlayEvent.Moved -> emit(mapOf("type" to "moved", "edge" to e.spot.edge.name.lowercase(), "y" to e.spot.y.toDouble()))

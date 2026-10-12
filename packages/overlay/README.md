@@ -2,7 +2,9 @@
 
 A floating bubble over other apps on Android, as an Expo module: a panel (a React component the app registers) that
 opens on tap, per-app visibility rules, a tap log with no text in it, and an optional focused-field reader through the
-app's own accessibility service. On iOS, the web and Node it reports `unsupported`
+app's own accessibility service. A tap opens the `panel`; set `manualPanel: true` to make a tap only emit `tap` and
+open it yourself with `overlay.openPanel(props)`, e.g. to read the focused field before the panel's own window takes
+its focus. On iOS, the web and Node it reports `unsupported`
 ([docs/capability-kits.md](../../docs/capability-kits.md) §7).
 
 ```ts

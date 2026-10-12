@@ -45,6 +45,9 @@ Read this index before driving, then use the matching feature file as the recipe
 - [overlay-panel](./overlay-panel.md) — the bubble's tap panel shows the focused app and the complete field text,
   wrapped and untruncated, with a reachable Close; honest when nothing is focused. **Emulator-only**; the phone proof
   is unproved until `examples/expo/e2e-panel.sh <emulator-serial>` runs on a disposable emulator.
+- [overlay-manual-panel](./overlay-manual-panel.md) — a tap auto-opens the panel by default; with `manualPanel: true`
+  the app reads the focused field and opens it itself with `openPanel`. **Emulator-only**; the example journey's phone
+  proof is unproved until it runs on a disposable emulator.
 
 ## Not provable on this host (declare honestly, do not fake)
 
@@ -74,3 +77,5 @@ in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`
   and returned by `focusedNode`, following focus between fields; passwords and no focus give nothing (emulator-only).
 - [overlay-panel](./overlay-panel.md) — the bubble's tap panel shows the focused app and the complete field text,
   wrapped and untruncated, with a reachable Close; honest when nothing is focused (emulator-only).
+- [overlay-manual-panel](./overlay-manual-panel.md) — default tap auto-opens the panel; `manualPanel: true` leaves the
+  open to the app so it can read the focused field first (emulator-only).

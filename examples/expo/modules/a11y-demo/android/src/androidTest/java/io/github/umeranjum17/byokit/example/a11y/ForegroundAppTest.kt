@@ -71,6 +71,12 @@ class ForegroundAppTest {
     var remove: (() -> Unit)? = null
     var manager: WindowManager? = null
     try {
+      // A device that is asleep or still showing the keyguard never gives a started activity window
+      // focus (the runner's boot-time unlock can race keyguard readiness). Wake, unlock and stay on:
+      // this test runs first in the module, so the whole run inherits an interactive device.
+      shell("input keyevent KEYCODE_WAKEUP")
+      shell("wm dismiss-keyguard")
+      shell("svc power stayon true")
       val component = "${context.packageName}/${WebFieldService::class.java.name}"
       shell("settings put secure enabled_accessibility_services $component")
       shell("settings put secure accessibility_enabled 1")

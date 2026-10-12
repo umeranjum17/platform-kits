@@ -35,7 +35,7 @@ npm ci && npm run typecheck && npm run bundle
 CI=1 npx expo prebuild -p android --no-install
 NODE_ENV=production ./gradlew assembleRelease        # default example; no EXPO_PUBLIC_SCREEN_DEMO
 
-# --- run on your own emulator (start it for the test with the fleet emulator flags) ---
+# --- run on your own emulator (start it for the test through the environment's memory gate, with the fleet emulator flags) ---
 serial=emulator-5554   # your run's serial; every adb call names it
 sh e2e-keep-clear.sh "$serial" "$EVIDENCE_DIR/keep-clear"
 ```

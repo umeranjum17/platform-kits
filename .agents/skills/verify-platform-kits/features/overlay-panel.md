@@ -26,7 +26,7 @@ showing the field it read. Close returns to the app.
 
 ## Driving it
 
-From a prebuilt example on a disposable emulator owned by the run (start it with the fleet emulator flags, and build
+From a prebuilt example on a disposable emulator owned by the run (start it through the environment's memory gate, with the fleet emulator flags, and build
 the default example first — no `EXPO_PUBLIC_SCREEN_DEMO`):
 
 ```bash

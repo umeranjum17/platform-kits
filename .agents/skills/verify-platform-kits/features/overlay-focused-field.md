@@ -24,7 +24,7 @@ the field the person is typing in, inside a WebView page (`WebFieldActivity`, de
 
 ## Driving it
 
-From a prebuilt example on a disposable emulator owned by the run (start it with the fleet emulator flags):
+From a prebuilt example on a disposable emulator owned by the run (start it through the environment's memory gate, with the fleet emulator flags):
 
 ```bash
 cd examples/expo

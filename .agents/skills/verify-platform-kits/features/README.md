@@ -48,6 +48,9 @@ Read this index before driving, then use the matching feature file as the recipe
 - [overlay-manual-panel](./overlay-manual-panel.md) — a tap auto-opens the panel by default; with `manualPanel: true`
   the app reads the focused field and opens it itself with `openPanel`. **Emulator-only**; the example journey's phone
   proof is unproved until it runs on a disposable emulator.
+- [overlay-foreground-app](./overlay-foreground-app.md) — the current foreground app's package from the attached
+  accessibility service, excluding host overlays, with null when the service is off or the app is unknown.
+  **Emulator-only**; unproved until `:a11y-demo:connectedDebugAndroidTest` runs on a disposable emulator.
 
 ## Not provable on this host (declare honestly, do not fake)
 
@@ -79,3 +82,5 @@ in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`
   wrapped and untruncated, with a reachable Close; honest when nothing is focused (emulator-only).
 - [overlay-manual-panel](./overlay-manual-panel.md) — default tap auto-opens the panel; `manualPanel: true` leaves the
   open to the app so it can read the focused field first (emulator-only).
+- [overlay-foreground-app](./overlay-foreground-app.md) — the foreground app's package from the attached service,
+  host overlays excluded, null when off or unknown (emulator-only).

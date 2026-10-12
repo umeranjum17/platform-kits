@@ -22,9 +22,10 @@ manifest brings the overlay and foreground-service permissions, the bubble's ser
 `shownFor`, `setApp` and `resetApp` keep the per-app rules; `stateWords(state)` gives the sentence to show for a state.
 `@platform-kits/overlay/focused-field` reads the focused text field only when the app calls `read()`.
 
-Nothing reads another app's screen in the background, except one thing while the bubble is on with the app's
-accessibility service attached and shown: the focused text field's bounds, never its text and never on a password field, so the
-bubble keeps off it. The tap log keeps no text and forgets entries after 30 days.
+Nothing reads another app's screen in the background, except two things while the app's accessibility service is
+attached: the foreground app's package name, every 400 ms; and, while the bubble is shown, the focused text field's
+bounds, never its text. The kit never reads a password field, so the bubble cannot move off one. The tap log keeps no
+text and forgets entries after 30 days.
 
 ## Focused field
 

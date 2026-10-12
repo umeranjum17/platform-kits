@@ -107,9 +107,9 @@ class AccessibilityFocusedFieldBox(private val service: AccessibilityService) {
  * polls. Listen from the main thread.
  * ponytail: polls every POLL_MS while a listener exists; take events from the app's service if that ever costs too much.
  */
-internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLooper()), private val read: () -> T?) {
+internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLooper()), private val read: () -> T) {
   private val main = Handler(Looper.getMainLooper())
-  private val listeners = Listeners<T?>()
+  private val listeners = Listeners<T>()
   private var count = 0
   @Volatile private var running = false
   private var last: T? = null // on [thread] only
@@ -124,7 +124,7 @@ internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLoop
   // One poll at a time, even after a quick stop and start left the last one queued.
   private val start = Runnable { thread.removeCallbacks(tick); last = read(); thread.postDelayed(tick, POLL_MS) }
 
-  fun onChange(fn: (T?) -> Unit): () -> Unit {
+  fun onChange(fn: (T) -> Unit): () -> Unit {
     val remove = listeners.add(fn)
     if (count++ == 0) { running = true; if (thread.looper == main.looper) start.run() else thread.post(start) }
     var removed = false
@@ -137,13 +137,7 @@ internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLoop
     }
   }
 
-  // Called on the main thread, when the service detaches: listeners learn the value is gone, then polling stops.
-  fun close() {
-    running = false
-    thread.removeCallbacks(start)
-    thread.removeCallbacks(tick)
-    if (last != null) { last = null; listeners.emit(null) }
-  }
+  fun close() { count = 0; running = false; thread.removeCallbacks(start); thread.removeCallbacks(tick) }
 
   companion object {
     const val POLL_MS = 400L

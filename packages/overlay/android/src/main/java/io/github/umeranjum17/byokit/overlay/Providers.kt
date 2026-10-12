@@ -24,12 +24,6 @@ interface KeyboardInset {
   fun onChange(fn: (Int?) -> Unit): () -> Unit
 }
 
-/** The focused text field's box in screen pixels; never its text. */
-interface FocusedFieldBox {
-  /** Calls [fn] on the main thread with the current box and each change; null with no editable field in focus. */
-  fun onChange(fn: (ClearRect?) -> Unit): () -> Unit
-}
-
 /**
  * The package of the window the person is using: the service's active window's root (needs `canRetrieveWindowContent`).
  * Only the root is fetched where Android allows it (13+), so no other node of that app's screen is read.
@@ -78,10 +72,11 @@ class AccessibilityKeyboardInset(private val service: AccessibilityService) : Ke
 }
 
 /**
- * The focused editable field's screen bounds (needs `canRetrieveWindowContent`), from one focus snapshot on a worker
- * thread; null with no focus or on a password path. Only the bounds leave it, never the text.
+ * The focused editable field's box in screen pixels (needs `canRetrieveWindowContent`), from one focus snapshot on a
+ * worker thread; null with no editable field in focus or on a password path. Only the bounds leave it, never the text.
+ * [onChange] calls on the main thread with the current box and each change.
  */
-class AccessibilityFocusedFieldBox(private val service: AccessibilityService) : FocusedFieldBox {
+class AccessibilityFocusedFieldBox(private val service: AccessibilityService) {
   private val thread = HandlerThread("byokit-focused-field").apply { start() }
   private val worker = Handler(thread.looper)
   private val main = Handler(Looper.getMainLooper())
@@ -95,7 +90,7 @@ class AccessibilityFocusedFieldBox(private val service: AccessibilityService) : 
     }
   }.getOrNull()?.let { ClearRect(it.left, it.top, it.width(), it.height()) }
 
-  override fun onChange(fn: (ClearRect?) -> Unit): () -> Unit {
+  fun onChange(fn: (ClearRect?) -> Unit): () -> Unit {
     val off = watch.onChange(fn)
     var on = true
     // The current box too, so a field already in focus is kept clear at once.
@@ -112,9 +107,9 @@ class AccessibilityFocusedFieldBox(private val service: AccessibilityService) : 
  * polls. Listen from the main thread.
  * ponytail: polls every POLL_MS while a listener exists; take events from the app's service if that ever costs too much.
  */
-internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLooper()), private val read: () -> T) {
+internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLooper()), private val read: () -> T?) {
   private val main = Handler(Looper.getMainLooper())
-  private val listeners = Listeners<T>()
+  private val listeners = Listeners<T?>()
   private var count = 0
   @Volatile private var running = false
   private var last: T? = null // on [thread] only
@@ -129,7 +124,7 @@ internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLoop
   // One poll at a time, even after a quick stop and start left the last one queued.
   private val start = Runnable { thread.removeCallbacks(tick); last = read(); thread.postDelayed(tick, POLL_MS) }
 
-  fun onChange(fn: (T) -> Unit): () -> Unit {
+  fun onChange(fn: (T?) -> Unit): () -> Unit {
     val remove = listeners.add(fn)
     if (count++ == 0) { running = true; thread.post(start) }
     var removed = false
@@ -142,7 +137,13 @@ internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLoop
     }
   }
 
-  fun close() { count = 0; running = false; thread.removeCallbacks(start); thread.removeCallbacks(tick) }
+  // Called on the main thread, when the service detaches: listeners learn the value is gone, then polling stops.
+  fun close() {
+    running = false
+    thread.removeCallbacks(start)
+    thread.removeCallbacks(tick)
+    if (last != null) { last = null; listeners.emit(null) }
+  }
 
   companion object {
     const val POLL_MS = 400L

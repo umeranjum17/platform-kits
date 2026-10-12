@@ -781,7 +781,7 @@ class ServiceBubble(moods: (String) -> Drawable?, spots: SpotStore, reducedMotio
 }
 interface ForegroundApp { val current: String?; fun onChange(fn: (String?) -> Unit): () -> Unit }
 interface KeyboardInset { val imeTopPx: Int?; fun onChange(fn: (Int?) -> Unit): () -> Unit }
-interface FocusedFieldBox { fun onChange(fn: (ClearRect?) -> Unit): () -> Unit }   // the focused field's bounds only, read off the main thread, null on a password path
+class AccessibilityFocusedFieldBox { fun onChange(fn: (ClearRect?) -> Unit): () -> Unit }   // the focused field's bounds only, read off the main thread, null on a password path
 object ByokitAccessibility { fun attach(service: AccessibilityService); fun detach(service: AccessibilityService) }   // called from the app's own service
 class PanelActivity : ReactActivity()                                    // translucent, renders the app-registered component
 class TapLog(context: Context) { fun add(app: String, action: String, at: Long); fun since(at: Long): List<TapEntry>; fun clear(); fun prune(now: Long) }  // 30 days

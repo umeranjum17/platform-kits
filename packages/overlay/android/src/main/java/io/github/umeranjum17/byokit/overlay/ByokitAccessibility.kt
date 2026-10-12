@@ -18,7 +18,7 @@ object ByokitAccessibility {
   @Volatile var keyboard: KeyboardInset? = null
     private set
   /** The focused text field's box while a service is attached. */
-  @Volatile var field: FocusedFieldBox? = null
+  @Volatile var field: AccessibilityFocusedFieldBox? = null
     private set
   /** The attached service, for FocusedFieldModule. */
   @Volatile internal var service: AccessibilityService? = null
@@ -67,7 +67,7 @@ object ByokitAccessibility {
     this.service = null
     (foreground as? AccessibilityForegroundApp)?.close()
     (keyboard as? AccessibilityKeyboardInset)?.close()
-    (field as? AccessibilityFocusedFieldBox)?.close()
+    field?.close()
     foreground = null
     keyboard = null
     field = null

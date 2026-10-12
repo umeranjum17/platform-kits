@@ -20,7 +20,7 @@ import android.provider.Settings
  * @param spots where the rest spot is remembered ([PrefsSpotStore])
  * @param reducedMotion whether to snap instead of glide ([reducedMotion] reads the system setting)
  * The remaining parameters are the kit's own sources (bubble view, host, foreground app, keyboard, panel, the
- * open panel's package and the focused field's box), replaced in the JVM tests.
+ * open panel's package), replaced in the JVM tests.
  */
 class ServiceBubble(
   moods: (String) -> Drawable?,
@@ -33,7 +33,6 @@ class ServiceBubble(
   private val keyboardNow: () -> KeyboardInset? = { ByokitAccessibility.keyboard },
   private val panels: Listeners<Boolean> = PanelActivity.open,
   private val panelApp: () -> String? = { PanelActivity.current?.packageName },
-  private val fieldNow: () -> FocusedFieldBox? = { ByokitAccessibility.field },
 ) {
   /**
    * The bubble over [host], a window the app's own foreground service owns (`WindowOverlayHost(this)`): it shows on
@@ -48,7 +47,7 @@ class ServiceBubble(
     bubbles: (OverlayHost) -> BubbleControl = { h -> Bubble(h, spots, moods, reducedMotion) },
   ) : this(
     moods, spots, reducedMotion, bubbles,
-    hosts = Listeners(), hostNow = { host }, foregroundNow = { null }, keyboardNow = { null },
+    hostNow = { host }, foregroundNow = { null }, keyboardNow = { null },
   )
 
   /**
@@ -164,7 +163,7 @@ class ServiceBubble(
       b.imeTopPx = k.imeTopPx
       watching += k.onChange { b.imeTopPx = it }
     }
-    fieldNow()?.let { f -> watching += f.onChange { field = it; keepClear(rects) } }
+    ByokitAccessibility.field?.let { f -> watching += f.onChange { field = it; keepClear(rects) } }
   }
 
   private fun appChanged(now: String?) {
@@ -210,15 +209,21 @@ class ServiceBubble(
 
   private fun hostChanged(h: OverlayHost?) {
     if (config == null) return
-    if (h != null) {
-      if (host == null) show(h) // a rebind restores the bubble with the remembered config
-    } else {
-      unwatch()
+    if (h != null && host == null) {
+      show(h) // a rebind restores the bubble with the remembered config
+      return
+    }
+    unwatch()
+    if (hostNow() == null) {
       rects = emptyList()
       bubble?.hide()
       bubble = null
       host = null
+      return
     }
+    bubble?.imeTopPx = null
+    watch()
+    keepClear(rects)
   }
 
   companion object {

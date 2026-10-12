@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `overlay.foregroundApp()` and `overlay.on('foregroundApp', ...)` expose only the current Android package from
+  the app's attached accessibility service, excluding host overlays; off or unknown returns null.
 - Add `manualPanel` to `StartOptions`: with it a bubble tap only emits `tap`, so the app can read the focused field
   before calling `openPanel(props)` and the panel's own window takes the focus. Default (absent/false) tap auto-open
   is unchanged.

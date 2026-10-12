@@ -571,6 +571,7 @@ export type OverlayEvent =
   | { type: 'state'; state: OverlayState }
   | { type: 'panel'; open: boolean }
   | { type: 'keepClear'; clear: boolean };          // false: no clear spot left, so the bubble stays at its own spot
+  | { type: 'foregroundApp'; app: string | null };  // the active app's package; null when off or unknown
 export type OverlayEventType = OverlayEvent['type'];
 // State transitions (native side, reported by state() and the `state` event):
 // - 'off' before the first start() and after stop().
@@ -584,6 +585,7 @@ export type TapEntry = { app: string; at: number; action: string };   // no text
 export type ClearRect = { left: number; top: number; width: number; height: number };   // full-display physical pixels
 export interface Overlay {
   state(): Promise<OverlayState>;
+  foregroundApp(): Promise<string | null>; // attached accessibility service; package only, null when off/unknown
   openPermission(): Promise<void>;     // window: the "display over other apps" screen; accessibility: accessibility settings
   start(o: StartOptions): Promise<OverlayState>;
   stop(): Promise<void>;
@@ -601,6 +603,7 @@ export interface Overlay {
 }
 export interface NativeOverlay {                         // what the Kotlin module exposes (7.5); internal seam
   state(): Promise<OverlayState>;
+  foregroundApp?(): Promise<string | null>; // attached accessibility service; package only, null when off/unknown
   openPermission(): Promise<void>;
   start(o: StartOptions): Promise<OverlayState>;
   stop(): Promise<void>;
@@ -617,6 +620,12 @@ export interface NativeOverlay {                         // what the Kotlin modu
   addListener(event: 'overlay', fn: (e: OverlayEvent) => void): { remove(): void };
 }
 ```
+
+`foregroundApp()` returns only the attached accessibility service's active package, or null when off/unknown.
+The `foregroundApp` event uses the existing overlay listener channel and follows service attach/detach even when
+the bubble is stopped. It reuses the 400 ms foreground watcher. Host overlay windows and the kit's translucent
+panel are excluded; only an active/focused application window can supply an underlying package. No text or view
+children are read and no new permission or UsageStats access is introduced. Non-Android entries return null.
 
 `src/rules.ts` (pure):
 

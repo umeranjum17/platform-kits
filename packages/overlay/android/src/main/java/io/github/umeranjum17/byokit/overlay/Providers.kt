@@ -126,7 +126,7 @@ internal class Watch<T>(private val thread: Handler = Handler(Looper.getMainLoop
 
   fun onChange(fn: (T?) -> Unit): () -> Unit {
     val remove = listeners.add(fn)
-    if (count++ == 0) { running = true; thread.post(start) }
+    if (count++ == 0) { running = true; if (thread.looper == main.looper) start.run() else thread.post(start) }
     var removed = false
     return {
       if (!removed) {

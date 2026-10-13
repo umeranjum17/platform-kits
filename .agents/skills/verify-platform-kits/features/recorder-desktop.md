@@ -38,7 +38,8 @@ set -eu
 : "${EVIDENCE_DIR:?set EVIDENCE_DIR to an absolute path outside the repo}"
 CACHE_BASE="${FM_SCRATCH_DIR:-$HOME/.cache/fm-scratch}"; mkdir -p "$CACHE_BASE"
 SCRATCH=$(mktemp -d "$CACHE_BASE/pk-recorder.XXXXXX") || exit 1   # scratch on disk, never /tmp (RAM)
-export TMPDIR="$SCRATCH/tmp"; mkdir -p "$TMPDIR"   # the driver browser's temp profile stays in-scratch
+SOCK_ROOT=$(mktemp -d /tmp/pk-rec-sock.XXXXXX) || exit 1   # short root for Chromium sockets: even the default SCRATCH nests too deep for the 108-byte Unix socket limit
+export TMPDIR="$SOCK_ROOT"   # the driver browser's temp profile stays under the short root; takes and evidence stay in SCRATCH
 HOME_DIR="$SCRATCH/home"; mkdir -p "$HOME_DIR" "$EVIDENCE_DIR"
 chrome=${PLATFORM_KITS_CHROME:-$(node -e "const{createRequire}=require('module');const r=createRequire('$REPO/noop.js');console.log(r('playwright-core').chromium.executablePath())")}
 for d in 77 78 79 80 81; do [ -e "/tmp/.X${d}-lock" ] || { disp=$d; break; }; done   # a display this run owns
@@ -105,15 +106,16 @@ cleanup() {
   [ -n "$server_pid" ] && kill "$server_pid" 2>/dev/null || true
   if [ -n "$url" ]; then for p in $(pgrep -f "app=$url" 2>/dev/null); do kill "$p" 2>/dev/null || true; done; fi
   kill "$xvfb_pid" 2>/dev/null || true
-  rm -rf -- "$SCRATCH"
+  rm -rf -- "$SCRATCH" "$SOCK_ROOT"
 }
 trap cleanup EXIT
 
+: > "$SCRATCH/server.log"   # pre-create so the set -e readiness poll never races the background redirect
 cd "$REPO"
 HOME="$HOME_DIR" XDG_CONFIG_HOME="$HOME_DIR/.config" DISPLAY=":$disp" \
   node examples/recorder/server.ts --browser "$chrome" > "$SCRATCH/server.log" 2>&1 &
 server_pid=$!
-for _ in $(seq 20); do url=$(sed -n 's/^Recorder: //p' "$SCRATCH/server.log"); [ -n "$url" ] && break; sleep 0.5; done
+for _ in $(seq 20); do url=$(sed -n 's/^Recorder: //p' "$SCRATCH/server.log" 2>/dev/null || true); [ -n "$url" ] && break; sleep 0.5; done
 [ -n "$url" ] || { echo 'server did not print a URL' >&2; cat "$SCRATCH/server.log" >&2; exit 1; }
 echo "recorder url: $url"
 
@@ -143,7 +145,12 @@ new MP4, and `recorder-recording-card.png`, `recorder-saved-view.png` and `recor
 - **Throwaway HOME decides the save folder.** The recorder writes `$HOME/Videos`; point `HOME` at the scratch tree so
   no real `~/Videos` is touched, and never start the server from the owner's session.
 - **`--browser` spawns a detached app window; the `trap` kills it by its `app=<url>` argument.** Playwright's own
-  browser is closed by the driver; its kit-owned profile lives under `HOME_DIR`, and with `TMPDIR` pointed at the
-  scratch tree the driver browser's temporary profile is removed with it (no `/tmp` litter).
+  browser is closed by the driver; the driver browser's temporary profile lives under the short `SOCK_ROOT`
+  (`TMPDIR`), which the `trap` removes with `SCRATCH` (no `/tmp` litter). Takes and `~/Videos` stay in `SCRATCH`
+  on disk, never in `/tmp` (RAM).
+- **Chromium sockets need a short root.** Even the default `SCRATCH` nests too deep for the 108-byte Unix socket
+  limit (`SingletonSocket`), so `TMPDIR` points at `SOCK_ROOT` (`/tmp/pk-rec-sock.XXXXXX`) while evidence stays
+  under the long `FM_SCRATCH_DIR` tree. `server.log` is pre-created before the server starts so the `set -e`
+  readiness poll never races the background redirect; the poll waits on the real `Recorder: <url>` line.
 - **ffmpeg needs `x11grab` and libx264.** If the Doctor step cannot find them, this journey is unavailable — declare
   it rather than substituting a fake.

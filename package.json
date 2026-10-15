@@ -21,8 +21,8 @@
     "test:browser": "sh scripts/test.sh 'packages/browser/test/*.test.ts' packages/record/test/example-recorder.test.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "playwright": "^1.63.0",
-    "typescript": "^5.9.0"
+    "@types/node": "^26.6.5",
+    "playwright": "^1.64.0",
+    "typescript": "^7.0.2"
   }
 }

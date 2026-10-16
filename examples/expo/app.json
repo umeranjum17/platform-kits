@@ -1,5 +1,8 @@
 {
   "expo": {
+    "experiments": {
+      "autolinkingModuleResolution": true
+    },
     "name": "Umer",
     "slug": "platform-kits-expo",
     "version": "1.0.0",

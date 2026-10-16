@@ -165,7 +165,10 @@ jobs:
       - run: npm run typecheck
         if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
-      - run: npx expo export --platform android --platform ios --output-dir dist
+      - run: npx expo export --platform android --platform ios --source-maps --output-dir dist
+        if: steps.scope.outputs.run == 'true'
+        working-directory: examples/expo
+      - run: node ../../scripts/bundle-single-copy.ts dist
         if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
       - name: Clean private scratch

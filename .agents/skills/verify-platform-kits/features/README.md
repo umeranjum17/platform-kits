@@ -31,6 +31,9 @@ Read this index before driving, then use the matching feature file as the recipe
 - [browser-launch](./browser-launch.md) — the built `@platform-kits/browser` launches an explicitly named Chromium in
   a private profile and captures a PNG; `npm run test:browser` covers it, and `PLATFORM_KITS_CHROME` opts into the
   real-Chromium launch leg.
+- [bundle-single-copy](./bundle-single-copy.md) — `examples/expo`'s export bundles exactly one copy of react,
+  react-native and expo-modules-core, each the app's own; `scripts/bundle-single-copy.ts` against the exported
+  sourcemaps is the pass.
 
 ## Emulator-only (phone proof unproved until run on an emulator)
 
@@ -85,3 +88,5 @@ in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`
   open to the app so it can read the focused field first (emulator-only).
 - [overlay-foreground-app](./overlay-foreground-app.md) — the foreground app's package from the attached service,
   host overlays excluded, null when off or unknown (emulator-only).
+- [bundle-single-copy](./bundle-single-copy.md) — the example bundles one copy of react, react-native and
+  expo-modules-core, each the app's own copy, proved by sourcemap fingerprint.

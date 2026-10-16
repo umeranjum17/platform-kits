@@ -2,11 +2,12 @@
 // Run after npm run build: node scripts/readme-check.ts [packages/<kit>/README.md ...]
 // Existing gaps are frozen in readme-baseline.json; changing code or diagnostics
 // invalidates its snapshot. Passing examples never need a baseline entry.
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -79,18 +80,31 @@ export function analyze(readmes: string[]): BlockResult[] {
         sources.set(path, result);
       }
     }
-    const program = ts.createProgram([...sources.keys()], {
-      module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext,
-      target: ts.ScriptTarget.ES2023, jsx: ts.JsxEmit.ReactJSX, strict: true, noEmit: true, skipLibCheck: true,
-      types: ["node"], lib: ["lib.es2023.d.ts", "lib.dom.d.ts"],
-    });
-    for (const diagnostic of ts.getPreEmitDiagnostics(program)) {
-      const source = diagnostic.file && sources.get(diagnostic.file.fileName);
-      const entry = { start: diagnostic.start ?? 0, code: diagnostic.code,
-        message: ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n") };
+    // TypeScript 7 has no stable JS compiler API, so run its tsc on a scratch project.
+    const config = join(scratch, "tsconfig.json");
+    writeFileSync(config, JSON.stringify({ files: [...sources.keys()], compilerOptions: {
+      module: "nodenext", moduleResolution: "nodenext", target: "es2023", jsx: "react-jsx", strict: true,
+      noEmit: true, skipLibCheck: true, types: ["node"], lib: ["es2023", "dom"],
+    } }));
+    const tsc = join(dirname(createRequire(import.meta.url).resolve("typescript/package.json")), "bin/tsc");
+    const run = spawnSync(process.execPath, [tsc, "-p", config, "--pretty", "false"], { encoding: "utf8" });
+    if (run.error) throw run.error;
+    // Each diagnostic is "file(line,col): error TSn: message"; chained messages continue on indented lines.
+    let current: { start: number; code: number; message: string } | undefined;
+    for (const text of run.stdout.split(/\r?\n/)) {
+      if (current && /^\s/.test(text)) { current.message += `\n${text}`; continue; }
+      if (!text.trim()) continue;
+      const match = /^(.+)\((\d+),(\d+)\): error TS(\d+): (.*)$/.exec(text);
+      const source = match && sources.get(resolve(match[1]));
       // Compiler/config/dependency errors outside an extracted file must fail.
-      if (!source) throw new Error(`readme-check: TS${entry.code}: ${entry.message}`);
-      source.diagnostics.push(entry);
+      if (!match || !source) throw new Error(`readme-check: ${text}`);
+      const lines = source.code.split("\n");
+      const start = lines.slice(0, Number(match[2]) - 1).reduce((n, l) => n + l.length + 1, 0) + Number(match[3]) - 1;
+      current = { start, code: Number(match[4]), message: match[5] };
+      source.diagnostics.push(current);
+    }
+    if (run.status !== 0 && results.every((r) => r.block === 0 || r.diagnostics.length === 0)) {
+      throw new Error(`readme-check: tsc exited ${run.status}: ${run.stderr || run.stdout}`);
     }
     return results;
   } finally {

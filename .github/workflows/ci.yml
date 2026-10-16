@@ -29,18 +29,28 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Skip the heavy steps on docs-only changes
+        id: scope
+        run: node scripts/ci-scope.mjs code
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.run == 'true'
         with:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
       - run: npm run build
+        if: steps.scope.outputs.run == 'true'
       - run: npm run check
+        if: steps.scope.outputs.run == 'true'
       - run: node scripts/readme-check.ts
+        if: steps.scope.outputs.run == 'true'
       - run: npm test # throwaway HOME, mocks only: no account, no network, no model
+        if: steps.scope.outputs.run == 'true'
       - run: npm run smoke:pack
+        if: steps.scope.outputs.run == 'true'
       - name: Release lint (PR)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.scope.outputs.run == 'true'
         env:
           RELEASE_BASE: origin/${{ github.base_ref }}
         run: npm run release -- lint --base "$RELEASE_BASE"
@@ -134,7 +144,11 @@ jobs:
       - name: Allocate private scratch
         run: echo "TMPDIR=$(mktemp -d /tmp/bk-XXXX)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Skip the heavy steps on docs-only changes
+        id: scope
+        run: node scripts/ci-scope.mjs code
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.run == 'true'
         with:
           node-version: '24'
           cache: npm
@@ -142,12 +156,17 @@ jobs:
             package-lock.json
             examples/expo/package-lock.json
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
       - run: npm run build
+        if: steps.scope.outputs.run == 'true'
       - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
       - run: npm run typecheck
+        if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
       - run: npx expo export --platform android --platform ios --output-dir dist
+        if: steps.scope.outputs.run == 'true'
         working-directory: examples/expo
       - name: Clean private scratch
         if: always()
@@ -277,3 +296,15 @@ jobs:
       - name: Clean private scratch
         if: always()
         run: case "$TMPDIR" in /tmp/bk-????) rm -rf -- "$TMPDIR";; esac
+
+  # The one required check on main: it reports on every PR and main push, whatever the scopes above skipped,
+  # so renaming or adding a job never strands a PR waiting on a check that no longer runs.
+  ci-ok:
+    if: always()
+    needs: [check, browser, record-recorder, react-native, overlay-android, statusbar-android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail when any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

@@ -1,6 +1,7 @@
 // Generic platform demo: overlay, focused field, screen frames and status-bar chip.
 import { useEffect, useRef, useState } from 'react';
 import { Dimensions, PermissionsAndroid, PixelRatio, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { overlay, stateWords, type OverlayState } from '@platform-kits/overlay';
 import { focusedField, type FocusedText } from '@platform-kits/overlay/focused-field';
 import { xLength } from '@platform-kits/social';
@@ -58,7 +59,7 @@ function Bubble() {
   const [taps, setTaps] = useState('');
   const [typed, setTyped] = useState('');
   const [field, setField] = useState('');
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const [clear, setClear] = useState('');
   useEffect(() => {
     overlay.state().then(setState);

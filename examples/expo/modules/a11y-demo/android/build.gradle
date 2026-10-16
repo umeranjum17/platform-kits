@@ -3,6 +3,8 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
+version = '1.0.0'
+
 android {
   namespace "io.github.umeranjum17.byokit.example.a11y"
   defaultConfig {

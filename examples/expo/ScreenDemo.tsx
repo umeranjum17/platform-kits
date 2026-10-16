@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Image, Pressable, StatusBar as Bars, StyleSheet, Text, View } from 'react-native';
+import type { ViewInstance } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { overlay } from '@platform-kits/overlay';
 import { screenFrame, type ScreenFrameResult } from '@platform-kits/overlay/screen-frame';
@@ -16,10 +17,10 @@ const STEPS = [
 
 /** Account-free native proof: opt in at build time with EXPO_PUBLIC_SCREEN_DEMO=1. */
 export function ScreenDemo() {
-  const target = useRef<View>(null);
+  const target = useRef<ViewInstance>(null);
   // Text near the demo button that the label must keep clear of.
-  const near = useRef<(View | null)[]>([]);
-  const keep = (i: number) => (v: View | null) => { near.current[i] = v; };
+  const near = useRef<(ViewInstance | null)[]>([]);
+  const keep = (i: number) => (v: ViewInstance | null) => { near.current[i] = v; };
   const [frame, setFrame] = useState<Frame | null>(null);
   const [message, setMessage] = useState('Take a picture, then show Umer where to tap.');
   const [point, setPoint] = useState('');
@@ -74,13 +75,13 @@ export function ScreenDemo() {
 }
 
 type Rect = { x: number; y: number; width: number; height: number };
-const measure = (view: View) => new Promise<Rect>((done) => view.measureInWindow((x, y, width, height) => done({ x, y, width, height })));
+const measure = (view: ViewInstance) => new Promise<Rect>((done) => view.measureInWindow((x, y, width, height) => done({ x, y, width, height })));
 
 /** Points at the view's full bounds, so the ring goes around it; the label stays clear of it and of the [avoid] views. */
-async function pointAt(view: View, frame: Frame, label: string, ms: number, avoid: (View | null)[] = []) {
+async function pointAt(view: ViewInstance, frame: Frame, label: string, ms: number, avoid: (ViewInstance | null)[] = []) {
   const d = frame.space.density;
   const t = await measure(view);
-  const boxes = await Promise.all(avoid.filter((v): v is View => !!v && v !== view).map(measure));
+  const boxes = await Promise.all(avoid.filter((v): v is ViewInstance => !!v && v !== view).map(measure));
   return overlay.pointHere({
     x: (t.x + t.width / 2) * d, y: (t.y + t.height / 2) * d, width: t.width * d, height: t.height * d, label, space: frame.space, ms,
     avoid: boxes.map((b) => ({ left: b.x * d, top: b.y * d, width: b.width * d, height: b.height * d })),
@@ -89,9 +90,9 @@ async function pointAt(view: View, frame: Frame, label: string, ms: number, avoi
 
 /** Five targets at the screen's top, edges, middle and bottom; each tap moves the ring to the next one. */
 function Tour({ frame, onClose }: { frame: Frame; onClose: () => void }) {
-  const refs = useRef<(View | null)[]>([]);
+  const refs = useRef<(ViewInstance | null)[]>([]);
   // The step text and the buttons around the targets, which the label must keep clear of.
-  const near = useRef<(View | null)[]>([]);
+  const near = useRef<(ViewInstance | null)[]>([]);
   const [step, setStep] = useState(-1);
   const go = (n: number) => {
     setStep(n);

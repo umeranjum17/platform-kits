@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update `playwright-core` to 1.64.0.
+
 ## 0.1.1 (2026-10-02)
 
 

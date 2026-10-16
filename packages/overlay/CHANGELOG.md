@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- FIX: The Android module builds with Android Gradle Plugin 9 (React Native 0.88, Expo SDK 58), which rejects a
+  Provider in the source-set API; the generated words asset directory is now passed as a File.
 - `overlay.foregroundApp()` and `overlay.on('foregroundApp', ...)` expose only the current Android package from
   the app's attached accessibility service, excluding host overlays; off or unknown returns null.
 - FIX: While the app's accessibility service is attached, the bubble and its pill keep off the focused text field on

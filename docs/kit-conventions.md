@@ -74,3 +74,4 @@ A later published export rename keeps a deprecated alias for at least one minor 
 A signature change starts with the spec. Package renames update manifests, exact dependency pins, examples,
 release order, build list and locks. Native scope changes require packed plugin and autolinking proof. Any old
 package deprecation or shim is a separately authorized migration; the extraction does neither.
+

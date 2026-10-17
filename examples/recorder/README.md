@@ -4,8 +4,6 @@ A small recorder app built on [`@platform-kits/record`](../../packages/record). 
 recording card with a live timer and a Stop button stays in the bottom-right corner while you work. When you stop, the
 video is saved to `~/Videos`, and the saved view offers Share.
 
-![Recording card over a real browser session](../../docs/evidence/recorder-indicator.png)
-
 Linux with an X11 session, Node 22.18+, and `/usr/bin/ffmpeg` with x11grab and libx264. From the repository root:
 
 ```sh
@@ -22,5 +20,4 @@ node examples/recorder/server.ts --browser /usr/bin/chromium   # or open the pri
 - The page is served on `127.0.0.1` behind a random address that is printed at start, so other local pages can't
   drive it.
 
-The [evidence README](../../docs/evidence/README.md) has a real 1080p run: a person records themselves working in a
-browser.
+The [root README](../../README.md) shows fresh captures from this example.

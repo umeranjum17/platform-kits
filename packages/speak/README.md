@@ -1,8 +1,9 @@
 # @platform-kits/speak
 
-Read a reply aloud through the platform's own text-to-speech. No network, no provider keys, no audio files:
-the web speaks through `speechSynthesis`, Android through `TextToSpeech`, iOS through `AVSpeechSynthesizer`.
-On Node (and anywhere with no engine) `speaker` is `unsupported` unless the host injects one. Private at 0.1.0.
+Read a reply aloud through the platform's own text-to-speech. No network, no provider keys, no audio files.
+On Node (and anywhere with no engine) `speaker` is `unsupported` unless the host injects one. Private; not published yet.
+
+The web speaks through `speechSynthesis`, Android through `TextToSpeech`, iOS through `AVSpeechSynthesizer`.
 
 ```ts
 import { speaker, SpeakError } from '@platform-kits/speak';

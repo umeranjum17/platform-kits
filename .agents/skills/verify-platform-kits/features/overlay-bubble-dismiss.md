@@ -58,8 +58,9 @@ and `bubble-dismiss-4-over-target.png` (red target, the bubble showing through) 
 - **Grab the bubble on its inner side**: a touch that starts near the screen edge (the bubble's outer half, on gesture
   navigation) is taken by the system back gesture, which cancels the drag and closes the example. The script grabs a
   sixth of the bubble's width in from its inner side and offsets the drop so the bubble's centre lands on the target.
-- **Look the target up before the screenshot**: `screencap` can take longer than the swipe has left on a busy
-  emulator.
+- **A busy emulator is slow to dump and capture**: `dumpsys window` and `screencap` can each take seconds, so the
+  script takes both at once during a 10 s swipe and then checks the target is still there, which proves the
+  screenshot is mid-drag.
 - **The script refuses a physical device** (`emulator-*` serial only). Never point it at a real phone.
 - **The script does not count `dismissed` events**: it checks the example's text, the windows and the saved spot.
   The once-only emit is the single `ACTION_UP` branch in `Bubble.kt`.

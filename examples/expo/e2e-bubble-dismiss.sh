@@ -72,12 +72,15 @@ absent target 'before any drag'
 
 # A slow swipe to mid-screen: the target shows while it lasts, then the bubble snaps to the left edge and stays on.
 grab
-a shell input swipe "$gx" "$gy" $(( W / 4 )) $(( H / 2 )) 6000 &
+a shell input swipe "$gx" "$gy" $(( W / 4 )) $(( H / 2 )) 10000 &
 swipe=$!
 sleep 2
+# The screenshot and the window dump at once, then the target again: still there, so the screenshot is mid-drag.
+shot bubble-dismiss-2-dragging &
 w=$(window target)
 cp "$captures/windows-target.txt" "$captures/windows-mid-drag.txt"
-shot bubble-dismiss-2-dragging
+wait $!
+window target >/dev/null || { echo 'the drag ended before the mid-drag screenshot was taken' >&2; exit 1; }
 set -- $w
 tl=$1; tt=$2; tr=$3; tb=$4
 echo "target=[$tl $tt $tr $tb] screen=${W}x$H"

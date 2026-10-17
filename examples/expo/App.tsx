@@ -14,6 +14,15 @@ const OWN_APP = 'io.github.umeranjum17.byokit.example';
 // The field reading the tap handler takes before it opens the panel: the panel's own window would take the field's
 // focus, so the bubble reads at the tap and the panel shows that frozen reading.
 let panelField: FocusedText | null = null;
+// The app's accessibility service can sit between unbind and rebind while a panel opens, so one sample can read off;
+// settle on a stable answer, and treat any on sample as on (a service that is truly off stays off).
+async function serviceOn(): Promise<boolean> {
+  for (let i = 0; i < 10; i += 1) {
+    if (await focusedField.available()) return true;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+}
 // The draft "Put it in the field" hands over as it closes the panel: with the panel on top nothing holds input
 // focus, so the app inserts after the close, when focus is back on the field, and says so on the pill.
 let panelDraft: string | null = null;
@@ -165,7 +174,7 @@ export function BubblePanel() {
   useEffect(() => {
     let live = true;
     (async () => {
-      const available = await focusedField.available();
+      const available = await serviceOn();
       if (!live) return;
       setService(available);
       setRead(panelField);

@@ -41,7 +41,10 @@ the example's own accessibility service, waits for the app to report it attached
 field's **actual native value** from the UI dump, opens the real panel, asserts the panel's text equals that value with
 no ellipsis and the app line names the example, then taps Close. It repeats in light and dark at 360 dp / font scale
 1.3 and captures `panel-light.png`, `panel-dark.png`, `notice-light.png`, `notice-dark.png` under the capture directory.
-Set `EVIDENCE_DIR` outside the repository and keep those stills there.
+Each light and dark journey also proves, in the same run: a bubble tap with no field focused says `No text field is in
+focus.`; an edit followed immediately by a tap shows the edited value (no sleep, no cache); the value overflows its card,
+scrolls until its last row is inside the card, and Close stays reachable. Once at the end, with the service disabled, a
+tap says the service is off (`read fields yet.`). Set `EVIDENCE_DIR` outside the repository and keep those stills there.
 
 ## Gotchas
 

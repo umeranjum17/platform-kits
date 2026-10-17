@@ -8,6 +8,8 @@ sealed class OverlayEvent {
   object Tap : OverlayEvent()
   /** The bubble was long-pressed. */
   object LongPress : OverlayEvent()
+  /** The bubble was dragged onto the dismiss target and turned off; its saved spot is kept. */
+  object Dismissed : OverlayEvent()
   /** The bubble was dragged and came to rest at [spot]. */
   data class Moved(val spot: Spot) : OverlayEvent()
   /** The JS module's state changed ('on', 'off', 'stuck', 'needs-permission'). */

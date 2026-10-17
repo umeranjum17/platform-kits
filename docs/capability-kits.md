@@ -566,6 +566,7 @@ export type StartOptions = {
 export type OverlayEvent =
   | { type: 'tap' }
   | { type: 'longPress' }
+  | { type: 'dismissed' }                           // dragged onto the dismiss target: off, the saved spot kept
   | { type: 'moved'; edge: Edge; y: number }        // y: 0–1 of the usable height
   | { type: 'state'; state: OverlayState }
   | { type: 'panel'; open: boolean }
@@ -747,7 +748,7 @@ teardown. Application overlay opacity stays within Android's tap-through limit.
 data class Size(val w: Int, val h: Int)
 data class Spot(val edge: Edge, val y: Float)                            // y in 0..1
 enum class Edge { LEFT, RIGHT }
-sealed class OverlayEvent { object Tap; object LongPress; data class Moved(val spot: Spot); data class State(val state: String); data class Panel(val open: Boolean); data class KeepClear(val clear: Boolean) }   // each extends OverlayEvent
+sealed class OverlayEvent { object Tap; object LongPress; object Dismissed; data class Moved(val spot: Spot); data class State(val state: String); data class Panel(val open: Boolean); data class KeepClear(val clear: Boolean) }   // each extends OverlayEvent
 class Listeners<T> { fun add(fn: (T) -> Unit): () -> Unit; fun emit(e: T) }   // a set: add returns its own remover; one throwing listener never stops the rest
 interface SpotStore { fun get(key: String): Spot?; fun put(key: String, spot: Spot) }
 object Placement {                                                       // pure, JVM-tested
@@ -756,6 +757,8 @@ object Placement {                                                       // pure
   fun snap(xPx: Int, yPx: Int, screen: Size, bubble: Size, insetTopPx: Int, imeTopPx: Int?): Spot   // nearest edge, clamped
   fun toPixels(spot: Spot, screen: Size, bubble: Size, insetTopPx: Int, imeTopPx: Int?): Pair<Int, Int>   // rests above the keyboard
   fun keepClear(x: Int, restY: Int, row: Size, screen: Size, insetTopPx: Int, imeTopPx: Int?, rects: List<ClearRect>): Int?   // nearest clear top for bubble+pill, null when none
+  fun dismissAt(screen: Size, target: Size, liftPx: Int): Pair<Int, Int>   // the drag's dismiss target, bottom centre above the gesture bar
+  fun overDismiss(xPx: Int, yPx: Int, bubble: Size, at: Pair<Int, Int>, target: Size): Boolean   // the bubble's centre is over the target
 }
 data class ClearRect(val left: Int, val top: Int, val width: Int, val height: Int)   // screen pixels, as getBoundsInScreen
 interface OverlayHost { fun add(view: View, x: Int, y: Int); fun move(x: Int, y: Int); fun remove(); val attached: Boolean }
@@ -772,7 +775,7 @@ class ServiceBubble(moods: (String) -> Drawable?, spots: SpotStore, reducedMotio
   constructor(host: OverlayHost, moods: (String) -> Drawable?, spots: SpotStore, reducedMotion: () -> Boolean = { false })   // over a window the app's own foreground service owns
   data class Config(val mood: String, val label: String? = null, val rules: Rules = Rules(), val perAppSpots: Boolean = false, val hideWhilePanelOpen: Boolean = true)
   val events: Listeners<OverlayEvent>
-  fun start(config: Config); fun stop()
+  fun start(config: Config); fun stop()                                  // a drop on the dismiss target stops it too, then emits Dismissed
   fun say(text: String, mood: String? = null, ms: Long = 2500, announce: Boolean = false)
   fun setMood(mood: String); fun setLabel(label: String?); fun setRules(rules: Rules)
   fun keepClear(rects: List<ClearRect>)                                  // kept until [] or stop(); dropped on an app, display or host change
@@ -884,6 +887,7 @@ app. `app.plugin.js` adds nothing to the manifest.
 | `overlay.needsPermission` | Allow this app to show over other apps to see the bubble. |
 | `overlay.restricted` | If that switch is greyed out, open this app's info, tap the menu, and allow restricted settings first. |
 | `overlay.unsupported` | This device can't show a bubble over other apps. |
+| `overlay.dismiss` | Drop here to turn it off |
 | `field.copied` | Couldn't type it in, so it's copied. Paste it where you want it. |
 | `field.failed` | Couldn't type it in. Try again. |
 

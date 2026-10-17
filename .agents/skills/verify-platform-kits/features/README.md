@@ -37,6 +37,9 @@ Read this index before driving, then use the matching feature file as the recipe
 
 ## Emulator-only (phone proof unproved until run on an emulator)
 
+- [overlay-bubble-dismiss](./overlay-bubble-dismiss.md) — dragging the bubble onto the bottom-centre dismiss target
+  turns it off and keeps its saved spot for the next start. **Emulator-only**; the phone proof is unproved until
+  `examples/expo/e2e-bubble-dismiss.sh <emulator-serial>` runs on a disposable emulator.
 - [overlay-keep-clear](./overlay-keep-clear.md) — the overlay bubble's pill is kept clear of the focused field (named
   by the app, or on its own while the app's accessibility service is attached), and returns to its saved spot.
   **Emulator-only**; the phone proof is unproved until `examples/expo/e2e-keep-clear.sh <emulator-serial>` runs on a
@@ -76,6 +79,8 @@ in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`
   recording card stays visible with a live timer and a usable Stop.
 - [browser-launch](./browser-launch.md) — open a URL, inline HTML or a named file in the explicit Chromium with a
   private profile, and capture a PNG (viewport, full page, or one element).
+- [overlay-bubble-dismiss](./overlay-bubble-dismiss.md) — drag the bubble onto the bottom-centre target and it turns
+  off, `dismissed` fires once and the saved spot is kept; a drop elsewhere snaps to the edge (emulator-only).
 - [overlay-keep-clear](./overlay-keep-clear.md) — the pill moves off the field it covers, and with no clear spot the
   bubble stays at its saved spot (emulator-only).
 - [overlay-screen-frame](./overlay-screen-frame.md) — screen capture asks for consent every time, the point marker

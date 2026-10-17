@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Dragging the bubble shows a `Drop here to turn it off` target (`overlay.dismiss` in `words.json`) at the bottom
+  centre above the gesture bar. Dropping the bubble on it turns the bubble off and emits `dismissed` once
+  (`OverlayEvent.Dismissed` natively, after a `ServiceBubble` stops itself); the saved spot is kept, so the next
+  `start()` restores it. Dropping elsewhere still snaps to the edge.
 - FIX: The Android module builds with Android Gradle Plugin 9 (React Native 0.88, Expo SDK 58), which rejects a
   Provider in the source-set API; the generated words asset directory is now passed as a File.
 - `overlay.foregroundApp()` and `overlay.on('foregroundApp', ...)` expose only the current Android package from

@@ -53,6 +53,12 @@ class Bubble(
   private var x = 0
   private var y = 0
   private var glide: ValueAnimator? = null
+  // The dismiss target: a window of its own, shown only while a drag is on; the bubble's centre over it highlights it.
+  private var dismissHost: WindowManagerHost? = null
+  private var dismissView: TextView? = null
+  private var dismissAt = Pair(0, 0)
+  private var dismissSize = Size(0, 0)
+  private var dismissOver = false
   // Rotation or a display size change moves the screen under the window; the spot stays, its pixels change.
   private val config = object : ComponentCallbacks {
     override fun onConfigurationChanged(c: Configuration) { main.post { if (host.attached) place() } }
@@ -76,6 +82,7 @@ class Bubble(
 
   override fun hide() {
     glide?.cancel()
+    hideDismiss()
     main.removeCallbacks(unsay)
     pill?.visibility = View.GONE
     viewContext()?.unregisterComponentCallbacks(config)
@@ -201,6 +208,52 @@ class Bubble(
     return rx to (ry ?: py)
   }
 
+  /**
+   * The target at the bottom centre above the gesture bar, in a window of the bubble's own type. Added after the
+   * bubble's window, so it draws over the bubble; its fill lets the bubble show through.
+   */
+  private fun showDismiss(context: Context) {
+    if (dismissView != null) return
+    val type = (host as? WindowManagerHost)?.type ?: return
+    val h = dismissHost ?: object : WindowManagerHost(context, type, DISMISS_TITLE) {}.also { dismissHost = it }
+    val v = TextView(context).apply {
+      text = Words.get(context, "overlay.dismiss")
+      setTextColor(Color.WHITE)
+      val padX = dp(context, 20f); val padY = dp(context, 12f)
+      setPadding(padX, padY, padX, padY)
+      background = dismissBackground(context, false)
+    }
+    v.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+    dismissSize = Size(v.measuredWidth, v.measuredHeight)
+    val (screen, _) = screen()
+    dismissAt = Placement.dismissAt(screen, dismissSize, dp(context, 24f))
+    dismissView = v
+    h.add(v, dismissAt.first, dismissAt.second)
+  }
+
+  /** Highlights the target while the bubble's centre is over it. */
+  private fun updateDismiss(context: Context) {
+    val v = dismissView ?: return
+    val over = Placement.overDismiss(x + rowOffset(), y + (image?.top ?: 0), bubbleSize(), dismissAt, dismissSize)
+    if (over == dismissOver) return
+    dismissOver = over
+    v.background = dismissBackground(context, over)
+  }
+
+  private fun hideDismiss() {
+    dismissHost?.remove()
+    dismissView = null
+    dismissOver = false
+  }
+
+  private fun dismissBackground(context: Context, over: Boolean): Drawable = GradientDrawable().apply {
+    cornerRadius = dp(context, 24f).toFloat(); setColor(if (over) 0x99D93025.toInt() else 0xB3202124.toInt())
+    setStroke(dp(context, 1.5f), 0xE6FFFFFF.toInt())
+  }
+
+  /** The bubble's x inside the row: past the pill when the pill is before it. */
+  private fun rowOffset(): Int = image?.left ?: 0
+
   private fun bubbleSize(): Size = image?.let { Size(it.layoutParams.width, it.layoutParams.height) } ?: Size(0, 0)
 
   /** The screen size and the status bar's height, from the host's window manager. */
@@ -237,7 +290,7 @@ class Bubble(
     }
   }
 
-  private inner class Touch(context: Context) : View.OnTouchListener {
+  private inner class Touch(private val context: Context) : View.OnTouchListener {
     private val density = context.resources.displayMetrics.density
     private var downX = 0f
     private var downY = 0f
@@ -260,26 +313,31 @@ class Bubble(
           if (!dragging && !longPressed && Placement.isDrag(dx, dy, density)) {
             dragging = true
             main.removeCallbacks(longPress)
+            showDismiss(context)
           }
-          if (dragging) { x = startX + dx.roundToInt(); y = startY + dy.roundToInt(); host.move(x, y) }
+          if (dragging) { x = startX + dx.roundToInt(); y = startY + dy.roundToInt(); host.move(x, y); updateDismiss(context) }
         }
         MotionEvent.ACTION_UP -> {
           main.removeCallbacks(longPress)
           val (screen, top) = screen()
           when {
-            dragging -> settle(Placement.snap(x + rowOffset(), y, screen, bubbleSize(), top, imeTopPx))
+            // Off at once, whoever owns the bubble; the saved spot is left as it was before the drag.
+            dragging && dismissOver -> { hide(); events.emit(OverlayEvent.Dismissed) }
+            dragging -> { hideDismiss(); settle(Placement.snap(x + rowOffset(), y, screen, bubbleSize(), top, imeTopPx)) }
             !longPressed -> v.performClick()
           }
         }
         MotionEvent.ACTION_CANCEL -> {
           main.removeCallbacks(longPress)
-          if (dragging) settle(spot)
+          if (dragging) { hideDismiss(); settle(spot) }
         }
       }
       return true
     }
+  }
 
-    /** The bubble's x inside the row: past the pill when the pill is before it. */
-    private fun rowOffset(): Int = image?.left ?: 0
+  companion object {
+    /** The dismiss target's window title, as `dumpsys window` names it. */
+    const val DISMISS_TITLE = "byokit-dismiss-target"
   }
 }

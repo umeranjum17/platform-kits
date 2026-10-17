@@ -63,7 +63,7 @@ class ServiceBubble(
     val hideWhilePanelOpen: Boolean = true,
   )
 
-  /** Bubble events (tap, longPress, moved); the app opens its panel from these. There is no JS event bridge here. */
+  /** Bubble events (tap, longPress, moved, dismissed: already stopped); the app opens its panel from these. There is no JS event bridge here. */
   val events = Listeners<OverlayEvent>()
   private var config: Config? = null
   private var bubble: BubbleControl? = null
@@ -145,7 +145,8 @@ class ServiceBubble(
     val c = config ?: return
     host = h
     val b = bubbles(h)
-    b.events.add(events::emit)
+    // Dropped on the dismiss target: off, as stop() leaves it, so a later attach or app switch does not bring it back.
+    b.events.add { e -> if (e is OverlayEvent.Dismissed) stop(); events.emit(e) }
     bubble = b
     watch()
     b.spotKey = SpotStore.key(c.perAppSpots, app)

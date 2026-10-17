@@ -1,7 +1,7 @@
 # Extraction provenance
 
 BYOKit source: `88eb2e2f666336d49f0ce18cf0e424d8491c09c9` (origin/main, 2026-10-01 UTC).
-Browser source: `015954dead553ec9bcba6dea0f4327143fa5c8d8`, branch `fm/byk-browser`,
+Browser source: `015954dead553ec9bcba6dea0f4327143fa5c8d8`, its browser branch,
 [open change](https://github.com/umeranjum17/byokit/pull/208). Its three path-limited patches were replayed with
 `git format-patch` / `git am`, preserving author names, emails and dates, before filtering the combined history.
 `browser-source-commits.txt` and `browser-replayed-commits.txt` record the series; `commit-map.txt` maps the
@@ -27,5 +27,5 @@ timeout branch has an older CI workflow and supplies no additional recorder pack
 approved unmerged series is ported; other open work remains on its existing BYOKit branches.
 
 The new repository was initialized separately with Apache-2.0 and its initial commit is retained as a merge parent
-so the extraction can be reviewed as a normal PR. Delivery is on fm/pk-move and requires a merge commit to preserve
+so the extraction can be reviewed as a normal PR. Delivery required a merge commit to preserve
 the extracted ancestry. Each public npm package needs its trusted publisher configured for the release workflow.

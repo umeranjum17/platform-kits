@@ -26,7 +26,7 @@ showing the field it read. Close returns to the app.
 
 ## Driving it
 
-From a prebuilt example on a disposable emulator owned by the run (start it through the environment's memory gate, with the fleet emulator flags, and build
+From a prebuilt example on a disposable emulator owned by the run (start it with the standard disposable-emulator flags, and build
 the default example first — no `EXPO_PUBLIC_SCREEN_DEMO`):
 
 ```bash
@@ -49,6 +49,6 @@ Set `EVIDENCE_DIR` outside the repository and keep those stills there.
   reads it while it still has focus and hands the reading to the panel at tap.
 - **`pm clear` disables the accessibility service asynchronously.** Enable it after the clear and wait for the app's
   own "Read the focused field" to report `available: true`; `dumpsys accessibility` can briefly show a dead binding.
-- **Set `ANDROID_SERIAL` / pass the serial.** Every `adb` call is `-s <serial>`; never run against another lane's
-  emulator.
+- **Set `ANDROID_SERIAL` / pass the serial.** Every `adb` call is `-s <serial>`; never run against another
+  emulator on the host.
 - The stills behind the panel show the example's own debug buttons; that is the existing demo screen, not the panel.

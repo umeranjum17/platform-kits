@@ -24,7 +24,7 @@ export interface SocialAccount {
   person: string;
   /** App-owned slot that tells two accounts of one person apart, for example "takeone". */
   slot: string;
-  /** Display handle such as `umer.bsky.social` or `@umer@example.social`. */
+  /** Display handle such as `yourhandle.bsky.social` or `@you@example.social`. */
   handle: string;
   /** Server origin, such as the Bluesky PDS or Mastodon instance. Empty for handoff networks. */
   origin: string;

@@ -1,9 +1,9 @@
 # @platform-kits/social
 
-Connect your own social accounts, draft posts, approve them, and post now or on a schedule. Nothing reaches a
-network without a person's approval of the exact post. Bluesky and Mastodon post through their APIs; Hacker News,
-Product Hunt, X, Reddit, TikTok, LinkedIn, Threads, Instagram and YouTube produce a handoff ticket: the text, a
-prefilled link, the approved media as `assets` and a checklist for a person to post by hand.
+Connect your own accounts, draft posts, approve them, and post now or on a schedule. Nothing reaches a
+network without a person's approval of the exact post. Some networks post through their own APIs; the rest
+produce a handoff ticket: the text, a prefilled link, the approved media as `assets` and a checklist for
+a person to post by hand. The supported networks are listed below.
 
 The main entry is portable: it uses only `fetch`, Web Crypto, `URL`, `TextEncoder` and `Intl.Segmenter`, so it runs
 in Node, Electron, a browser or PWA, and React Native (with Web Crypto and `URL` polyfills; without `Intl.Segmenter`,

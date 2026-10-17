@@ -1,7 +1,7 @@
 # @platform-kits/browser
 
 Take a PNG screenshot of a URL, HTML string, or explicitly named local HTML file.
-The app selects an installed Chromium or Chrome. The kit never downloads a browser,
+The app selects an installed browser. The kit never downloads a browser,
 attaches to a running browser, or opens a person's existing browser profile.
 
 Node 22.18+ only, including an Electron main process. No PWA, browser, React Native,
@@ -60,7 +60,7 @@ for the host's normal temp cleanup. Cookies and page storage last only for this 
 | Setting or operation | Behavior |
 | --- | --- |
 | `executablePath` | Required absolute path; checked for an executable file, never inferred |
-| `findChromium(candidates)` | First executable in the explicit absolute-path list, or `undefined`; does not verify the binary's identity |
+| `findChromium(candidates)` | First executable in the explicit absolute-path list (a Chromium or Chrome build), or `undefined`; does not verify the binary's identity |
 | `viewport` / `setViewport` | Positive integer CSS-pixel width and height; default 1280 × 800 |
 | `deviceScaleFactor` | Positive finite scale at session creation; default 1; start another session to change it |
 | `timeoutMs` | Positive finite deadline per browser operation; default 20 seconds |

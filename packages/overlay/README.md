@@ -1,6 +1,6 @@
 # @platform-kits/overlay
 
-A floating bubble over other apps on Android, as an Expo module: a panel (a React component the app registers) that
+A floating bubble over other apps on Android: a panel (a screen the app registers) that
 opens on tap, per-app visibility rules, a tap log with no text in it, and an optional focused-field reader through the
 app's own accessibility service. A tap opens the `panel`; set `manualPanel: true` to make a tap only emit `tap` and
 open it yourself with `overlay.openPanel(props)`, e.g. to read the focused field before the panel's own window takes
@@ -15,7 +15,7 @@ if (state === 'needs-permission') await overlay.openPermission();
 const off = overlay.on('tap', () => overlay.say('Hi'));
 ```
 
-Add the config plugin to `app.json`: `["@platform-kits/overlay", { "moods": { "calm": "./assets/calm.png" } }]`. It copies
+Install it as an Expo module: add the config plugin to `app.json`: `["@platform-kits/overlay", { "moods": { "calm": "./assets/calm.png" } }]`. It copies
 each mood image into the app's drawables and raises the app's minimum Android version to 8.0 (API 26). The library's
 manifest brings the overlay and foreground-service permissions, the bubble's service and the panel's activity.
 

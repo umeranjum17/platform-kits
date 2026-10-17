@@ -204,8 +204,7 @@ export function recordGuardMs(maxSeconds: number): number;   // (maxSeconds + CO
   line over 64 KB is `protocol`; stderr keeps a rolling 2 KB tail with no total cap, because a recording can log for an
   hour.
 - **Process groups.** `runRecorder` and `streamRecorder` spawn with `detached: true`, and every SIGTERM and SIGKILL
-  (timeout, cap, guard, stop fallback, make abort) goes to the process group (`process.kill(-pid, sig)`), as
-  `packages/herdr/src/supervise.ts` does.
+  (timeout, cap, guard, stop fallback, make abort) goes to the process group (`process.kill(-pid, sig)`).
 - **Planner key.** With `key`, stdio is `['ignore', 'pipe', 'pipe', 'pipe']`. The kit writes the key to fd 3, closes
   it, and passes `--planner-key-fd 3 --max-tokens <n>`. Without a key it passes `--no-planner`. The key never
   appears in argv, env, a file or any error message.
@@ -239,8 +238,8 @@ export function captureContract(make: () => Promise<CaptureContractBench>, optio
 ```
 
 **Fake behaviour.**
-- **The shim.** `bin` is a Node script at `<dir>/recorder`. Its shebang pins `process.execPath`, as herdr's
-  `writeBinShim` does. It reads `<dir>/script.json` on every run, and appends one JSON line per run to
+- **The shim.** `bin` is a Node script at `<dir>/recorder`. Its shebang pins `process.execPath`. It reads
+  `<dir>/script.json` on every run, and appends one JSON line per run to
   `<dir>/invocations.jsonl`. That line holds argv, env, the key read from `--planner-key-fd`, and the parsed captions
   file.
 - **Default hello.** `{ protocol: 1, recorder: { name: 'fake-recorder', version: '0.0.0' }, sources: ['screen',

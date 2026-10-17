@@ -1,6 +1,5 @@
 // Env from nothing, argv, spawn, caps and the wall-clock guard (docs/capability-kits.md 5.4, D-G, D-K). Nothing here
-// reads `process.env`, searches the PATH or runs a shell; every signal goes to the recorder's process group, as
-// packages/herdr/src/supervise.ts does.
+// reads `process.env`, searches the PATH or runs a shell; every signal goes to the recorder's process group.
 import { bundledRecorder } from './recorder-path.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { accessSync, constants, statSync } from 'node:fs';

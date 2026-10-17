@@ -32,7 +32,7 @@ Node-only; there is no PWA, browser, React Native, Firefox or WebKit entry.
 Two levels, both from the worktree root after Launch:
 
 **1. The offline suite** (fake launcher; proves launch options, isolation, URL policy, validation and error
-suppression). This is a browser job: run it through the memory gate holding the shared heavy-jobs lock.
+suppression). This is a browser job: run it on its own, holding any shared heavy-jobs lock the environment provides.
 
 ```bash
 # drive=(npm run test:browser)   # sh scripts/test.sh 'packages/browser/test/*.test.ts' packages/record/test/example-recorder.test.ts

@@ -37,7 +37,7 @@ npm ci && npm run typecheck
 CI=1 npx expo prebuild -p android --no-install
 NODE_ENV=production ./gradlew assembleRelease        # default example; no EXPO_PUBLIC_SCREEN_DEMO
 
-# --- drive on your own emulator (start it for the test with the fleet emulator flags) ---
+# --- drive on your own emulator (start it for the test with the standard disposable-emulator flags) ---
 serial=emulator-5554   # your run's serial; every adb call names it
 ```
 

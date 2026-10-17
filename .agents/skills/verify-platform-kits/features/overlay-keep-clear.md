@@ -41,7 +41,7 @@ npm ci && npm run typecheck && npm run bundle
 CI=1 npx expo prebuild -p android --no-install
 NODE_ENV=production ./gradlew assembleRelease        # default example; no EXPO_PUBLIC_SCREEN_DEMO
 
-# --- run on your own emulator (start it for the test through the environment's memory gate, with the fleet emulator flags) ---
+# --- run on your own emulator (start it for the test with the standard disposable-emulator flags) ---
 serial=emulator-5554   # your run's serial; every adb call names it
 sh e2e-keep-clear.sh "$serial" "$EVIDENCE_DIR/keep-clear"
 ```
@@ -64,4 +64,4 @@ the no-space and cleared lines, and the `focus-3-left` bubble top equal to its `
   rotated or resized display changes the numbers but not the pass condition (zero overlap after keep-clear).
 - **The focused-field part enables an accessibility service** on the emulator (the script clears it again at its
   start). A force-stop turns an app's service off, so the script enables it after the force-stop.
-- **Kill only your emulator** (`adb -s <serial> emu kill`); never `adb kill-server` or touch another lane's device.
+- **Kill only your emulator** (`adb -s <serial> emu kill`); never `adb kill-server` or touch another device.

@@ -58,4 +58,4 @@ are in the capture directory, and no `ScreenFrameService` runs after a cancelled
   taps use physical-pixel centres from `uiautomator` bounds.
 - **Consent is per-request by design.** A successful capture never exempts the next one; the final leg re-requests and
   cancels to prove it.
-- **Kill only your emulator** (`adb -s <serial> emu kill`); never `adb kill-server` or touch another lane's device.
+- **Kill only your emulator** (`adb -s <serial> emu kill`); never `adb kill-server` or touch another device.

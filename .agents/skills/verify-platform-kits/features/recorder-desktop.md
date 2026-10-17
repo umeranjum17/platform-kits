@@ -138,7 +138,7 @@ new MP4, and `recorder-recording-card.png`, `recorder-saved-view.png` and `recor
 
 ## Gotchas
 
-- **One Xvfb per display.** `:99` is often already taken by another lane on this host; the script picks the first free
+- **One Xvfb per display.** `:99` is often already taken by another process on this host; the script picks the first free
   display and its `trap` kills only its own Xvfb. Never `pkill Xvfb`.
 - **The URL carries a token.** The server serves the page only at the printed `/<token>/` address and rejects other
   hosts; drive the printed URL, not `127.0.0.1:<port>/`.

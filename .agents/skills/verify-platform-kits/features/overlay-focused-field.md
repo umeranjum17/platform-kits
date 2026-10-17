@@ -24,7 +24,7 @@ the field the person is typing in, inside a WebView page (`WebFieldActivity`, de
 
 ## Driving it
 
-From a prebuilt example on a disposable emulator owned by the run (start it through the environment's memory gate, with the fleet emulator flags):
+From a prebuilt example on a disposable emulator owned by the run (start it with the standard disposable-emulator flags):
 
 ```bash
 cd examples/expo
@@ -40,8 +40,8 @@ report is under `modules/a11y-demo/android/build/outputs/androidTest-results/`.
 
 ## Gotchas
 
-- **Set `ANDROID_SERIAL`.** `connectedDebugAndroidTest` runs on every attached device otherwise, including another
-  lane's emulator.
+- **Set `ANDROID_SERIAL`.** `connectedDebugAndroidTest` runs on every attached device otherwise, including any other
+  emulator on the host.
 - **The test enables its own accessibility service** and restores the previous `enabled_accessibility_services`.
 - **Chromium publishes DOM focus late**; the test waits on the raw framework tree before each kit call, so a kit call
   that needs a retry still fails.

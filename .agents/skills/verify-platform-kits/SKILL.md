@@ -22,9 +22,9 @@ npm run build                 # tsc -b every package, then fix-words-dts.cjs
 ```
 
 Ready when `npm run build` exits 0 and `packages/record/dist/index.js` and `packages/browser/dist/index.js` exist.
-Builds and full test suites are heavy: run them one at a time through the environment's memory gate, holding any
-shared heavy-jobs lock it provides. A one-package `tsc` plus a single test file is light and needs no lock.
-Start an emulator only through the environment's memory gate, the same way as builds; reuse an emulator already
+Builds and full test suites are heavy: run them one at a time, holding any shared heavy-jobs
+lock the environment provides. A one-package `tsc` plus a single test file is light and needs no lock.
+Start an emulator only when a proof needs one, the same way as builds (one at a time); reuse an emulator already
 running for the same work instead of starting another; at most one emulator per run; stop it
 (`adb -s <serial> emu kill`) when the proof ends.
 
@@ -110,7 +110,7 @@ test -f "$EVIDENCE_DIR"/*.txt && echo "evidence survived"
 ```
 
 The desktop recipe's `trap cleanup EXIT` kills only its own Xvfb, server and app browser. Never `pkill Xvfb` or
-`pkill chrome`: other lanes on this host run their own displays and browsers, and a shared `Xvfb :99` may already be
+`pkill chrome`: other processes on this host may run their own displays and browsers, and a shared `Xvfb :99` may already be
 in use — pick a display whose `/tmp/.X<n>-lock` does not exist. Confirm the evidence files still exist after cleanup;
 a cleanup that eats the proof fails the run.
 

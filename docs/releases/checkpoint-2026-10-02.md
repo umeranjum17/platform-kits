@@ -27,7 +27,7 @@ This is the first publication under `@platform-kits`. Most capabilities were car
 - The recorder owner's accepted proof reports a 26.1-second, 1920×1080 H.264 output at 30/1 fps with 783 frames, captured on a private display with Chromium. This is desktop proof, not mobile/Wayland/store qualification; [the merged change describes the original session](https://github.com/umeranjum17/platform-kits/pull/4).
 - [Archived isolated recorder still](../evidence/byokit-record-recorder.png): a private local demonstration display retained from the foundation. It is not a new capture of the desktop example and does not independently prove 30 fps.
 - [Archived approved Mastodon post](../evidence/social-mastodon-local-approved-post.png): the visible account/server is localhost:3443. This is local-provider/browser proof only, not public-account authentication or a live external post.
-- Android screen-frame/WebView/overlay proof comes from disposable CI emulators. No personal phone, app-store submission or live-provider test was performed for this release lane.
+- Android screen-frame/WebView/overlay proof comes from disposable CI emulators. No personal phone, app-store submission or live-provider test was performed for this release.
 
 ## Known issues and exclusions
 

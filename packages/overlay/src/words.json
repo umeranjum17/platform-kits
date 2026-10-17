@@ -5,6 +5,7 @@
   "overlay.needsPermission": "Allow this app to show over other apps to see the bubble.",
   "overlay.restricted": "If that switch is greyed out, open this app's info, tap the menu, and allow restricted settings first.",
   "overlay.unsupported": "This device can't show a bubble over other apps.",
+  "overlay.dismiss": "Drop here to turn it off",
   "field.copied": "Couldn't type it in, so it's copied. Paste it where you want it.",
   "field.failed": "Couldn't type it in. Try again.",
   "screen.taking": "Taking one picture of your screen"

@@ -42,6 +42,16 @@ object Placement {
     return x to y.coerceAtMost(restBottom(bottom, bubble, imeTopPx)).coerceIn(top, bottom)
   }
 
+  /** The top-left for the dismiss target: centred on the bottom of the usable screen, lifted by [liftPx]. */
+  fun dismissAt(screen: Size, target: Size, liftPx: Int): Pair<Int, Int> =
+    (screen.w - target.w) / 2 to (screen.h - target.h - liftPx).coerceAtLeast(0)
+
+  /** Whether the bubble (top-left (xPx, yPx), size [bubble]) has its centre over the target box at [at] of [target]. */
+  fun overDismiss(xPx: Int, yPx: Int, bubble: Size, at: Pair<Int, Int>, target: Size): Boolean {
+    val cx = xPx + bubble.w / 2; val cy = yPx + bubble.h / 2
+    return cx in at.first..at.first + target.w && cy in at.second..at.second + target.h
+  }
+
   private fun band(screen: Size, bubble: Size, insetTopPx: Int): Pair<Int, Int> {
     val top = insetTopPx.coerceAtLeast(0)
     return top to (screen.h - bubble.h).coerceAtLeast(top)

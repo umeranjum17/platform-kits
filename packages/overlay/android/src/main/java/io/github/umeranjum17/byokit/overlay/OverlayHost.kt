@@ -31,8 +31,8 @@ class WindowOverlayHost(context: Context) :
 class AccessibilityOverlayHost(service: AccessibilityService) :
   WindowManagerHost(service, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
 
-/** The shared body of both hosts: one not-focusable, wrap-content window at the top-left gravity. */
-abstract class WindowManagerHost(internal val context: Context, type: Int) : OverlayHost {
+/** The shared body of both hosts: one not-focusable, wrap-content window at the top-left gravity, named [title]. */
+abstract class WindowManagerHost(internal val context: Context, internal val type: Int, title: String = "") : OverlayHost {
   private val windows = context.getSystemService(WindowManager::class.java)
   private val params = WindowManager.LayoutParams(
     WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, type,
@@ -40,6 +40,7 @@ abstract class WindowManagerHost(internal val context: Context, type: Int) : Ove
     PixelFormat.TRANSLUCENT,
   ).apply {
     gravity = Gravity.TOP or Gravity.START
+    if (title.isNotEmpty()) this.title = title
     // Screen coordinates, status bar included, which is what Placement works in.
     flags = flags or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
     if (Build.VERSION.SDK_INT >= 30) fitInsetsTypes = 0

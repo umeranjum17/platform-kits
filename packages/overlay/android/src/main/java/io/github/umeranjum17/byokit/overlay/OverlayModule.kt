@@ -332,6 +332,8 @@ class OverlayModule : Module() {
         options?.takeIf { !it.manualPanel }?.panel?.let { PanelActivity.launch(context, it, emptyMap()) }
       }
       is OverlayEvent.LongPress -> emit(mapOf("type" to "longPress"))
+      // Dropped on the dismiss target: off, as stop() leaves it, but the saved spot is kept for the next start().
+      is OverlayEvent.Dismissed -> { stopNow(); emit(mapOf("type" to "dismissed")) }
       is OverlayEvent.Moved -> emit(mapOf("type" to "moved", "edge" to e.spot.edge.name.lowercase(), "y" to e.spot.y.toDouble()))
       is OverlayEvent.KeepClear -> emit(mapOf("type" to "keepClear", "clear" to e.clear))
       else -> {}

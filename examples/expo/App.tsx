@@ -70,6 +70,7 @@ function Bubble() {
   const [field, setField] = useState('');
   const input = useRef<TextInputInstance>(null);
   const [clear, setClear] = useState('');
+  const [dismissed, setDismissed] = useState('');
   useEffect(() => {
     overlay.state().then(setState);
     const offState = overlay.on('state', (e) => setState(e.state));
@@ -105,9 +106,11 @@ function Bubble() {
       overlay.say(read ? `Read: ${read.text}` : 'No text field in focus.');
     });
     const offClear = overlay.on('keepClear', (e) => setClear(e.clear ? 'The bubble is clear of the field.' : 'No clear spot: the bubble stays put.'));
-    return () => { offState(); offTap(); offPanel(); offLong(); offClear(); };
+    const offDismissed = overlay.on('dismissed', () => setDismissed('Bubble dismissed. Start it again to bring it back.'));
+    return () => { offState(); offTap(); offPanel(); offLong(); offClear(); offDismissed(); };
   }, []);
   const start = async () => {
+    setDismissed('');
     const s = await overlay.start({
       host: 'window', mood: 'bubble', panel: 'bubblePanel', manualPanel: true,
       notice: { channel: 'bubble', title: NAME, text: 'The bubble is on.', icon: 'byokit_notification' },
@@ -143,6 +146,7 @@ function Bubble() {
       }} />
       <Button id="keepClearOff" label="Stop keeping it clear" onPress={() => { overlay.keepClear([]); setClear('Back at its own spot.'); }} />
       {!!clear && <Text testID="clear" style={s.small}>{clear}</Text>}
+      {!!dismissed && <Text testID="bubbleDismissed" style={s.small}>{dismissed}</Text>}
     </View>
   );
 }

@@ -91,6 +91,12 @@ the screen. When no clear spot is left the bubble stays at its saved spot rather
 finite edges and non-negative sizes, or it throws `Error('overlay: keepClear …')` before any native call. Kotlin
 services call `ServiceBubble.keepClear(listOf(ClearRect(left, top, width, height)))`.
 
+Dragging the bubble shows a `Drop here to turn it off` target at the bottom centre, above the gesture bar, for as long
+as the drag lasts; the target turns red while the bubble's centre is over it. Dropping the bubble there turns it off,
+as `stop()` does, and emits `dismissed` once. The saved spot is kept, so the next `start()` brings the bubble back
+where it was. Dropping it anywhere else snaps it to the nearest edge as before. A Kotlin `ServiceBubble` stops itself
+the same way and emits `OverlayEvent.Dismissed`.
+
 While the app's accessibility service is attached, the bubble (on either host, and `ServiceBubble`) also keeps clear
 of the focused text field on its own, with no boxes from the app, and returns to its saved spot when focus leaves.
 The field's box joins the app's boxes. The kit reads only the field's bounds, from one focus snapshot every 400 ms

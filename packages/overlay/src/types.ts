@@ -21,6 +21,7 @@ export type StartOptions = {
 export type OverlayEvent =
   | { type: 'tap' }
   | { type: 'longPress' }
+  | { type: 'dismissed' }                           // dragged onto the dismiss target: the bubble is off; its saved spot is kept
   | { type: 'moved'; edge: Edge; y: number }        // y: 0–1 of the usable height
   | { type: 'state'; state: OverlayState }
   | { type: 'panel'; open: boolean }

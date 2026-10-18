@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- FIX: The bubble's disc casts a soft shadow below its edge, so it lifts off light pages; on near-black ones its light
+  rim sets it apart. The shadow is a window of its own (`byokit-bubble-shadow`) that never takes touches, so a tap just
+  below the disc still reaches the app; the bubble's window, touch target, snap and `keepClear` positions are unchanged.
 - Dragging the bubble shows a `Drop here to turn it off` target (`overlay.dismiss` in `words.json`) at the bottom
   centre above the gesture bar. Dropping the bubble on it turns the bubble off and emits `dismissed` once
   (`OverlayEvent.Dismissed` natively, after a `ServiceBubble` stops itself); the saved spot is kept, so the next

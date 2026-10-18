@@ -42,7 +42,7 @@ bubble() {
   a shell dumpsys window windows > "$captures/windows.txt"
   python3 -c 'import sys,re
 for b in open(sys.argv[1]).read().split("Window #"):
- if "ty=APPLICATION_OVERLAY" in b and sys.argv[2] in b:
+ if "ty=APPLICATION_OVERLAY" in b and sys.argv[2] in b and "byokit-bubble-shadow" not in b:
   m=re.search(r"\b(?:mFrame|frame)=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",b)
   if m: print(*m.groups()); break
 else: raise SystemExit("no bubble window (see windows.txt)")' "$captures/windows.txt" "$app"

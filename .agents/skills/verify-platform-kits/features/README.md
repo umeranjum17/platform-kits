@@ -40,6 +40,9 @@ Read this index before driving, then use the matching feature file as the recipe
 - [overlay-bubble-dismiss](./overlay-bubble-dismiss.md) — dragging the bubble onto the bottom-centre dismiss target
   turns it off and keeps its saved spot for the next start. **Emulator-only**; the phone proof is unproved until
   `examples/expo/e2e-bubble-dismiss.sh <emulator-serial>` runs on a disposable emulator.
+- [overlay-bubble-shadow](./overlay-bubble-shadow.md) — the bubble's disc casts a soft shadow on light pages, its rim
+  shows on near-black ones, and a tap just below the disc reaches the app. **Emulator-only**; the phone proof is
+  unproved until `examples/expo/e2e-bubble-shadow.sh <emulator-serial>` runs on a disposable emulator.
 - [overlay-keep-clear](./overlay-keep-clear.md) — the overlay bubble's pill is kept clear of the focused field (named
   by the app, or on its own while the app's accessibility service is attached), and returns to its saved spot.
   **Emulator-only**; the phone proof is unproved until `examples/expo/e2e-keep-clear.sh <emulator-serial>` runs on a
@@ -81,6 +84,8 @@ in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`
   private profile, and capture a PNG (viewport, full page, or one element).
 - [overlay-bubble-dismiss](./overlay-bubble-dismiss.md) — drag the bubble onto the bottom-centre target and it turns
   off, `dismissed` fires once and the saved spot is kept; a drop elsewhere snaps to the edge (emulator-only).
+- [overlay-bubble-shadow](./overlay-bubble-shadow.md) — a soft shadow under the disc, measured on light and
+  near-black pages, that never takes a tap (emulator-only).
 - [overlay-keep-clear](./overlay-keep-clear.md) — the pill moves off the field it covers, and with no clear spot the
   bubble stays at its saved spot (emulator-only).
 - [overlay-screen-frame](./overlay-screen-frame.md) — screen capture asks for consent every time, the point marker

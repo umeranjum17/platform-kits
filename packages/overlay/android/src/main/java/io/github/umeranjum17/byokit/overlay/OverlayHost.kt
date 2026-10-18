@@ -31,8 +31,13 @@ class WindowOverlayHost(context: Context) :
 class AccessibilityOverlayHost(service: AccessibilityService) :
   WindowManagerHost(service, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
 
-/** The shared body of both hosts: one not-focusable, wrap-content window at the top-left gravity, named [title]. */
-abstract class WindowManagerHost(internal val context: Context, internal val type: Int, title: String = "") : OverlayHost {
+/**
+ * The shared body of both hosts: one not-focusable, wrap-content window at the top-left gravity, named [title]; without
+ * [touchable], touches pass through it to whatever is below.
+ */
+abstract class WindowManagerHost(
+  internal val context: Context, internal val type: Int, title: String = "", touchable: Boolean = true,
+) : OverlayHost {
   private val windows = context.getSystemService(WindowManager::class.java)
   private val params = WindowManager.LayoutParams(
     WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, type,
@@ -41,6 +46,7 @@ abstract class WindowManagerHost(internal val context: Context, internal val typ
   ).apply {
     gravity = Gravity.TOP or Gravity.START
     if (title.isNotEmpty()) this.title = title
+    if (!touchable) flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
     // Screen coordinates, status bar included, which is what Placement works in.
     flags = flags or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
     if (Build.VERSION.SDK_INT >= 30) fitInsetsTypes = 0

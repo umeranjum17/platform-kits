@@ -60,6 +60,26 @@ class BubbleTest {
   private fun ClearRect.covers(o: ClearRect) =
     left < o.left + o.width && o.left < left + width && top < o.top + o.height && o.top < top + height
 
+  @Test @Config(sdk = [35], manifest = Config.NONE, qualifiers = "w600dp-h800dp-xxhdpi")
+  fun noteMovesBesideAFullHeightFieldWhenThereIsNoVerticalSpace() {
+    val context = RuntimeEnvironment.getApplication()
+    val host = Recording(context)
+    val bubble = Bubble(host, Spots(), { null }, { true })
+    bubble.show("calm")
+    try {
+      bubble.say("Inserted. Send it yourself.", null, 60_000)
+      val before = box(host, bubble)
+      val screenWidth = context.resources.displayMetrics.widthPixels
+      val field = ClearRect(before.left + before.width / 2 - 25, 100, 50, 2200)
+      assertTrue(before.covers(field))
+      bubble.keepClear(listOf(field))
+      val after = box(host, bubble)
+      assertFalse(after.covers(field))
+      assertTrue(after.left != before.left)
+      assertTrue(after.left >= 0 && after.left + after.width <= screenWidth)
+    } finally { bubble.hide() }
+  }
+
   @Test @Config(sdk = [35], manifest = Config.NONE, qualifiers = "w360dp-h800dp-xxhdpi")
   fun keepClearMovesTheWholeRowOffTheBoxesAndBackWithoutTouchingTheSavedSpot() {
     val context = RuntimeEnvironment.getApplication()

@@ -60,6 +60,28 @@ object Placement {
   private fun restBottom(bottom: Int, bubble: Size, imeTopPx: Int?): Int =
     if (imeTopPx == null) bottom else minOf(bottom, imeTopPx - bubble.h)
 
+  /** Place a transient note row below, above, then beside its avoid boxes, clamped to the usable screen. */
+  fun noteClear(
+    x: Int, restY: Int, row: Size, screen: Size, insetTopPx: Int, imeTopPx: Int?, rects: List<ClearRect>,
+  ): Pair<Int, Int>? {
+    val maxX = (screen.w - row.w).coerceAtLeast(0)
+    val left = x.coerceIn(0, maxX)
+    val top = insetTopPx.coerceAtLeast(0)
+    val bottom = restBottom((screen.h - row.h).coerceAtLeast(top), row, imeTopPx).coerceAtLeast(top)
+    fun clampY(y: Int) = y.coerceIn(top, bottom)
+    fun clear(atX: Int, atY: Int) = rects.none {
+      it.width > 0 && it.height > 0 && atX < it.left + it.width && it.left < atX + row.w &&
+        atY < it.top + it.height && it.top < atY + row.h
+    }
+    if (clear(left, clampY(restY))) return left to clampY(restY)
+    val below = rects.map { left to clampY(it.top + it.height) }
+    val above = rects.map { left to clampY(it.top - row.h) }
+    val sides = rects.flatMap { r ->
+      listOf(r.left - row.w, r.left + r.width).map { it.coerceIn(0, maxX) to clampY(restY) }
+    }
+    return (below + above + sides).firstOrNull { clear(it.first, it.second) }
+  }
+
   /**
    * The top for the whole row (bubble and pill, [row] big, its left at [x]) with [rects] kept clear: [restY] when the
    * row there covers none of them, else the nearest top in the usable band (below the status bar, above the keyboard)

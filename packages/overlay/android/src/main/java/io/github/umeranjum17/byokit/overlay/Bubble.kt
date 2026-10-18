@@ -216,9 +216,11 @@ class Bubble(
     if (rects.isNotEmpty() && rectsScreen == null) rectsScreen = screen
     if (rectsScreen != null && rectsScreen != screen) { rects = emptyList(); rectsScreen = null }
     disc = (px - rx) to (maxOf(b.h, said.h) - b.h) / 2
-    val ry = Placement.keepClear(rx, py, Size(b.w + said.w, maxOf(b.h, said.h)), screen, top, imeTopPx, rects)
-    if (clear != (ry != null)) { clear = ry != null; events.emit(OverlayEvent.KeepClear(clear)) }
-    return rx to (ry ?: py)
+    val row = Size(b.w + said.w, maxOf(b.h, said.h))
+    val target = if (said.w > 0) Placement.noteClear(rx, py, row, screen, top, imeTopPx, rects)
+      else Placement.keepClear(rx, py, row, screen, top, imeTopPx, rects)?.let { rx to it }
+    if (clear != (target != null)) { clear = target != null; events.emit(OverlayEvent.KeepClear(clear)) }
+    return target ?: (rx to py)
   }
 
   /**

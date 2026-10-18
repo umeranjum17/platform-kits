@@ -47,6 +47,8 @@ Read this index before driving, then use the matching feature file as the recipe
   by the app, or on its own while the app's accessibility service is attached), and returns to its saved spot.
   **Emulator-only**; the phone proof is unproved until `examples/expo/e2e-keep-clear.sh <emulator-serial>` runs on a
   disposable emulator.
+- [overlay-note-clear](./overlay-note-clear.md) — `say()` feedback after a real example-app insert stays clear of
+  inserted field text; prove with `examples/expo/e2e-assist.sh` and inspect its final screenshot. **Emulator-only.**
 - [overlay-screen-frame](./overlay-screen-frame.md) — the screen-frame capture consent, point marker and tour.
   **Emulator-only**; the phone proof is unproved until `examples/expo/e2e-screen-frame.sh <emulator-serial>` runs on a
   disposable emulator.

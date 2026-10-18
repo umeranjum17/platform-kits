@@ -67,6 +67,7 @@ feature map drives today:
 - `node examples/recorder/server.ts --browser <chromium>` — desktop recorder, under a private Xvfb + throwaway HOME.
 - `npm run test:browser` — the browser kit suite; set `PLATFORM_KITS_CHROME` to a real Chromium to exercise its launch.
 - `examples/expo/e2e-keep-clear.sh <emulator-serial>` — overlay keep-clear, **emulator-only**.
+- `examples/expo/e2e-assist.sh <emulator-serial>` — real text-insert journey and transient overlay note, **emulator-only**.
 - `examples/expo/e2e-bubble-dismiss.sh <emulator-serial>` — overlay drag-to-dismiss, **emulator-only**.
 - `examples/expo/e2e-bubble-shadow.sh <emulator-serial>` — overlay bubble shadow, **emulator-only**.
 - `examples/expo/e2e-screen-frame.sh <emulator-serial>` — overlay screen-frame, **emulator-only**.
@@ -128,5 +129,5 @@ a cleanup that eats the proof fails the run.
 ## Feature map
 
 Read [features/README.md](features/README.md) for the index and preconditions. The host-provable features today are
-`recorder-desktop` and `browser-launch`; `overlay-keep-clear`, `overlay-screen-frame`, `overlay-focused-field` and
-`overlay-panel` are **emulator-only** and their phone proof is **unproved** until run on a disposable emulator.
+`recorder-desktop` and `browser-launch`; `overlay-keep-clear`, `overlay-note-clear`, `overlay-screen-frame`,
+`overlay-focused-field` and `overlay-panel` are **emulator-only** and their phone proof is **unproved** until run on a disposable emulator.

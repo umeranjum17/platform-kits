@@ -40,13 +40,13 @@ else: raise SystemExit("missing: "+sys.argv[1])' "$1"
 }
 tap() { set -- $(bounds "$1"); a shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); }
 # An overlay window of the example: left top right bottom. "target" is the dismiss target, by its title; "bubble" is
-# any other. Android 11+ prints `frame=`, older `mFrame=`. Fails when there is none; windows-<name>.txt keeps the dump.
+# any other but the disc shadow. Android 11+ prints `frame=`, older `mFrame=`. Fails when there is none; windows-<name>.txt keeps the dump.
 window() {
   a shell dumpsys window windows > "$captures/windows-$1.txt"
   python3 -c 'import sys,re
 want,app,title=sys.argv[2:5]
 for b in open(sys.argv[1]).read().split("Window #"):
- if "ty=APPLICATION_OVERLAY" in b and app in b and (title in b)==(want=="target"):
+ if "ty=APPLICATION_OVERLAY" in b and app in b and "byokit-bubble-shadow" not in b and (title in b)==(want=="target"):
   m=re.search(r"\b(?:mFrame|frame)=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",b)
   if m: print(*m.groups()); break
 else: raise SystemExit("no "+want+" window (see windows-"+want+".txt)")' "$captures/windows-$1.txt" "$1" "$app" "$target"

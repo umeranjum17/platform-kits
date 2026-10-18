@@ -68,6 +68,7 @@ feature map drives today:
 - `npm run test:browser` — the browser kit suite; set `PLATFORM_KITS_CHROME` to a real Chromium to exercise its launch.
 - `examples/expo/e2e-keep-clear.sh <emulator-serial>` — overlay keep-clear, **emulator-only**.
 - `examples/expo/e2e-bubble-dismiss.sh <emulator-serial>` — overlay drag-to-dismiss, **emulator-only**.
+- `examples/expo/e2e-bubble-shadow.sh <emulator-serial>` — overlay bubble shadow, **emulator-only**.
 - `examples/expo/e2e-screen-frame.sh <emulator-serial>` — overlay screen-frame, **emulator-only**.
 - `examples/expo/e2e-panel.sh <emulator-serial>` — overlay bubble panel reads the focused field in full, **emulator-only**.
 - `ANDROID_SERIAL=<emulator-serial> ./gradlew :a11y-demo:connectedDebugAndroidTest` (in `examples/expo/android`) —

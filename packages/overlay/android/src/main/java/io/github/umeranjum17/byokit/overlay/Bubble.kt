@@ -5,7 +5,13 @@ import android.annotation.SuppressLint
 import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorFilter
+import android.graphics.Paint
+import android.graphics.PixelFormat
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -53,6 +59,10 @@ class Bubble(
   private var x = 0
   private var y = 0
   private var glide: ValueAnimator? = null
+  // The disc's shadow: a window of its own under the bubble's, never touchable, so a tap below the disc reaches the app.
+  private var shadowHost: WindowManagerHost? = null
+  // Where the disc sits inside the row, which the shadow follows.
+  private var disc = Pair(0, 0)
   // The dismiss target: a window of its own, shown only while a drag is on; the bubble's centre over it highlights it.
   private var dismissHost: WindowManagerHost? = null
   private var dismissView: TextView? = null
@@ -76,6 +86,7 @@ class Bubble(
     image?.setImageDrawable(moods(mood))
     val (px, py) = target()!!
     x = px; y = py
+    showShadow(context)
     host.add(row!!, x, y)
     context.registerComponentCallbacks(config)
   }
@@ -87,6 +98,7 @@ class Bubble(
     pill?.visibility = View.GONE
     viewContext()?.unregisterComponentCallbacks(config)
     host.remove()
+    shadowHost?.remove()
   }
 
   /**
@@ -183,7 +195,7 @@ class Bubble(
     glide?.cancel()
     val (tx, ty) = target() ?: return
     x = tx; y = ty
-    host.move(x, y)
+    move()
   }
 
   /**
@@ -203,6 +215,7 @@ class Bubble(
     val rx = if (spot.edge == Edge.RIGHT) px - said.w else px
     if (rects.isNotEmpty() && rectsScreen == null) rectsScreen = screen
     if (rectsScreen != null && rectsScreen != screen) { rects = emptyList(); rectsScreen = null }
+    disc = (px - rx) to (maxOf(b.h, said.h) - b.h) / 2
     val ry = Placement.keepClear(rx, py, Size(b.w + said.w, maxOf(b.h, said.h)), screen, top, imeTopPx, rects)
     if (clear != (ry != null)) { clear = ry != null; events.emit(OverlayEvent.KeepClear(clear)) }
     return rx to (ry ?: py)
@@ -251,6 +264,18 @@ class Bubble(
     setStroke(dp(context, 1.5f), 0xE6FFFFFF.toInt())
   }
 
+  /** Moves the row, and the shadow with its disc, to (x, y). */
+  private fun move() {
+    host.move(x, y)
+    shadowHost?.move(x + disc.first, y + disc.second)
+  }
+
+  private fun showShadow(context: Context) {
+    val type = (host as? WindowManagerHost)?.type ?: return
+    val h = shadowHost ?: object : WindowManagerHost(context, type, SHADOW_TITLE, touchable = false) {}.also { shadowHost = it }
+    h.add(ImageView(context).apply { setImageDrawable(DiscShadow(context, bubbleSize())) }, x + disc.first, y + disc.second)
+  }
+
   /** The bubble's x inside the row: past the pill when the pill is before it. */
   private fun rowOffset(): Int = image?.left ?: 0
 
@@ -284,10 +309,38 @@ class Bubble(
       addUpdateListener {
         val f = it.animatedValue as Float
         x = (fromX + (px - fromX) * f).roundToInt(); y = (fromY + (py - fromY) * f).roundToInt()
-        host.move(x, y)
+        move()
       }
       start()
     }
+  }
+
+  /**
+   * A soft shadow under the disc: a disc-sized circle dropped by [SHADOW_DP], fading out over its last [SHADOW_DP], so
+   * it shows as a crescent below the disc and stays inside its window, which an edge would cut. Drawn rather than an
+   * elevation, which an overlay window does not render.
+   */
+  private inner class DiscShadow(context: Context, private val disc: Size) : Drawable() {
+    private val drop = dp(context, SHADOW_DP).toFloat()
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    override fun getIntrinsicWidth(): Int = disc.w
+    override fun getIntrinsicHeight(): Int = disc.h + drop.roundToInt()
+
+    override fun draw(canvas: Canvas) {
+      val r = bounds.width() / 2f
+      if (r <= drop) return
+      val cx = bounds.left + r; val cy = bounds.top + r + drop
+      paint.shader = RadialGradient(
+        cx, cy, r, intArrayOf(0x99000000.toInt(), 0x99000000.toInt(), 0), floatArrayOf(0f, (r - drop) / r, 1f),
+        Shader.TileMode.CLAMP,
+      )
+      canvas.drawCircle(cx, cy, r, paint)
+    }
+
+    override fun setAlpha(alpha: Int) {}
+    override fun setColorFilter(colorFilter: ColorFilter?) {}
+    @Deprecated("Deprecated in Java") override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
   }
 
   private inner class Touch(private val context: Context) : View.OnTouchListener {
@@ -315,7 +368,7 @@ class Bubble(
             main.removeCallbacks(longPress)
             showDismiss(context)
           }
-          if (dragging) { x = startX + dx.roundToInt(); y = startY + dy.roundToInt(); host.move(x, y); updateDismiss(context) }
+          if (dragging) { x = startX + dx.roundToInt(); y = startY + dy.roundToInt(); move(); updateDismiss(context) }
         }
         MotionEvent.ACTION_UP -> {
           main.removeCallbacks(longPress)
@@ -339,5 +392,9 @@ class Bubble(
   companion object {
     /** The dismiss target's window title, as `dumpsys window` names it. */
     const val DISMISS_TITLE = "byokit-dismiss-target"
+    /** The disc shadow's window title, as `dumpsys window` names it. */
+    const val SHADOW_TITLE = "byokit-bubble-shadow"
+    /** How far below the disc, in dp, its shadow fades out. */
+    private const val SHADOW_DP = 8f
   }
 }

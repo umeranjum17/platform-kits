@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.3 (2026-10-18)
+
+
+
 - FIX: The transient `say()` note now moves below, above, or beside keep-clear boxes (including the focused field) and
   stays within the screen, instead of covering inserted text when no vertical position is available.
 - FIX: The bubble's disc casts a soft shadow below its edge, so it lifts off light pages; on near-black ones its light

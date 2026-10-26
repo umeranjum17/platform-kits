@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "repo": "platform-kits",
+  "head": "25b551712764250a00ce1118d47d806450ec237d",
+  "tree": "d8bff322546196594c7ec1ffec92d15c0730de13",
+  "claim": "A README visitor sees an X badge reading @umership in the badge row.",
+  "result": "pass",
+  "at": "2026-10-26T04:20:00.965Z",
+  "files": [
+    {
+      "path": "<evidence root>/20261026T041939Z-25b55171-106600/readme-badge.png",
+      "sha256": "9bb39c2e9c2a11ea3cec11a5058a40a289ae0aab921ce7f6fd80a3fc4f208b6e"
+    },
+    {
+      "path": "<evidence root>/20261026T041939Z-25b55171-106600/readme-badge.txt",
+      "sha256": "c01d00212232c9e1b45025440ebd187358b378a8f229335cbc92d1ae720d3917"
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "20261026T041939Z-25b55171-106600",
+      "commit": "25b551712764250a00ce1118d47d806450ec237d",
+      "journey": null,
+      "command": "bash -c 'e=\"$DONE_DONE_EVIDENCE_ROOT/20261026T041939Z-25b55171-106600\"; d=$(mktemp -d); chromium --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=1280,1400 --user-data-dir=\"$d/profile\" --screenshot=\"$e/readme-badge.png\" \"https://github.com/umeranjum17/platform-kits/blob/fm/pk-x-handle-readme/README.md\"; r=$?; rm -rf -- \"$d\"; test \"$r\" -eq 0 || exit \"$r\"; grep -F \"X: @umership\" README.md > \"$e/readme-badge.txt\"; printf \"%s\\n\" \"{\\\"target\\\":{\\\"version\\\":\\\"README branch head 25b551712764250a00ce1118d47d806450ec237d\\\"},\\\"start\\\":\\\"Visitor opens rendered README on branch fm/pk-x-handle-readme\\\",\\\"steps\\\":[\\\"View README badge row at desktop width\\\"],\\\"result\\\":\\\"README shows an X badge reading @umership\\\"}\" > \"$e/steps.json\"'",
+      "tool": "0.6.7",
+      "steps": {
+        "target": {
+          "version": "README branch head 25b551712764250a00ce1118d47d806450ec237d"
+        },
+        "start": "Visitor opens rendered README on branch fm/pk-x-handle-readme",
+        "steps": [
+          "View README badge row at desktop width"
+        ],
+        "result": "README shows an X badge reading @umership"
+      }
+    }
+  ],
+  "judge": {
+    "route": "answerer:opencode",
+    "model": "ollama-cloud/deepseek-v4.1-flash",
+    "independence": "agent",
+    "author": {
+      "agent": "claude",
+      "model": "claude-haiku-5-5"
+    },
+    "verdicts": [
+      {
+        "path": "<evidence root>/20261026T041939Z-25b55171-106600/readme-badge.png",
+        "sha256": "9bb39c2e9c2a11ea3cec11a5058a40a289ae0aab921ce7f6fd80a3fc4f208b6e",
+        "verdict": "pass",
+        "seen": "The README badge row under the description clearly shows \"X @umership\" alongside \"License Apache 2.0\" and \"Examples ready to try\", which is the X badge the outcome names."
+      },
+      {
+        "path": "<evidence root>/20261026T041939Z-25b55171-106600/readme-badge.txt",
+        "sha256": "c01d00212232c9e1b45025440ebd187358b378a8f229335cbc92d1ae720d3917",
+        "verdict": "pass",
+        "seen": "The badge markup is `<a href=\"https://x.com/umership\"><img alt=\"X: @umership\" src=\"https://img.shields.io/badge/X-@umership-285c4b?...logo=x...\">`, showing an X badge that reads @umership and links to the account."
+      }
+    ]
+  }
+}

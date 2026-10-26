@@ -13,7 +13,7 @@ Record a screen, capture a page, or keep a helpful action within reach.</p>
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache_2.0-285c4b?style=flat-square"></a>
   <a href="#pick-your-kit"><img alt="Six focused kits" src="https://img.shields.io/badge/kits-6-285c4b?style=flat-square"></a>
   <a href="examples/recorder"><img alt="Runnable examples" src="https://img.shields.io/badge/examples-ready_to_try-285c4b?style=flat-square"></a>
-  <a href="https://x.com/umership"><img alt="@umership on X" src="https://img.shields.io/badge/X-000000?style=flat-square&logo=x&logoColor=white"></a>
+  <a href="https://x.com/umership"><img alt="X: @umership" src="https://img.shields.io/badge/X-@umership-285c4b?style=flat-square&logo=x&logoColor=white"></a>
 </p>
 
 <p align="center">

@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "repo": "platform-kits",
+  "head": "26b693643ab4195e4d9b8b5729a67d8b1e66d948",
+  "tree": "033e75e3301b33e125b8c61607100aa0e6cbf65e",
+  "claim": "A README visitor sees the @umership X badge linking to his profile.",
+  "result": "pass",
+  "at": "2026-10-26T03:56:42.601Z",
+  "files": [
+    {
+      "path": "<evidence root>/20261026T035621Z-26b69364-ac8b48/readme-badge.png",
+      "sha256": "fdce607fa7101285ecfc0a1d9fa074b051ec8f3b44cac12e3f2529e0eb073f12"
+    },
+    {
+      "path": "<evidence root>/20261026T035621Z-26b69364-ac8b48/readme-badge.txt",
+      "sha256": "51d083fe2313d109e40257b2a711d37831c94ad5d8232e8206a17435e11cdbd5"
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "20261026T035621Z-26b69364-ac8b48",
+      "commit": "26b693643ab4195e4d9b8b5729a67d8b1e66d948",
+      "journey": null,
+      "command": null,
+      "tool": "0.6.7",
+      "steps": {
+        "target": {
+          "version": "README commit 26b693643ab4195e4d9b8b5729a67d8b1e66d948"
+        },
+        "start": "Visitor opens rendered README on branch fm/pk-x-handle-readme",
+        "steps": [
+          "View README badge row at desktop width"
+        ],
+        "result": "README displays an X badge linked to @umership"
+      }
+    }
+  ],
+  "judge": {
+    "route": "answerer:opencode",
+    "model": "ollama-cloud/deepseek-v4.1-flash",
+    "independence": "agent",
+    "author": {
+      "agent": "claude",
+      "model": "claude-haiku-5-5"
+    },
+    "verdicts": [
+      {
+        "path": "<evidence root>/20261026T035621Z-26b69364-ac8b48/readme-badge.png",
+        "sha256": "fdce607fa7101285ecfc0a1d9fa074b051ec8f3b44cac12e3f2529e0eb073f12",
+        "verdict": "pass",
+        "seen": "The screenshot shows the platform-kits README badge row rendered on GitHub: \"License: Apache 2.0\", \"kits 6\", \"examples ready_to_try\", and a dark square X badge at the right of the row (`X` with the X logo), which is the @umership X badge added by the diff, so the page shows the badge to a visitor. The link target cannot be confirmed from a static image, which keeps it below certainty."
+      },
+      {
+        "path": "<evidence root>/20261026T035621Z-26b69364-ac8b48/readme-badge.txt",
+        "sha256": "51d083fe2313d109e40257b2a711d37831c94ad5d8232e8206a17435e11cdbd5",
+        "verdict": "pass",
+        "seen": "The diff adds `<a href=\"https://x.com/umership\"><img alt=\"@umership on X\" src=\"https://img.shields.io/badge/X-000000?style=flat-square&logo=x&logoColor=white\"></a>` inside the README's centered `<p>` badge row, directly after the examples badge, so the rendered page links the X badge to the umership profile."
+      }
+    ]
+  }
+}

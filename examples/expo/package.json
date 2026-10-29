@@ -6,7 +6,7 @@
     "@platform-kits/overlay": "file:../../packages/overlay",
     "@platform-kits/social": "file:../../packages/social",
     "@platform-kits/statusbar": "file:../../packages/statusbar",
-    "expo": "~58.0.7",
+    "expo": "~58.0.19",
     "expo-build-properties": "~58.0.11",
     "expo-status-bar": "~58.0.3",
     "react": "19.3.0",

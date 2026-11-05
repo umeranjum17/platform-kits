@@ -7,7 +7,7 @@
     "@platform-kits/social": "file:../../packages/social",
     "@platform-kits/statusbar": "file:../../packages/statusbar",
     "expo": "~58.0.19",
-    "expo-build-properties": "~58.0.11",
+    "expo-build-properties": "~58.0.12",
     "expo-status-bar": "~58.0.4",
     "react": "19.3.1",
     "react-native": "0.88.0"
